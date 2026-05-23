@@ -34,7 +34,8 @@ def solve_dijkstra(network: RoadNetwork, W: np.ndarray, origin: int, destination
     try:
         path = nx.shortest_path(G, origin, destination, weight="weight")
     except nx.NetworkXNoPath:
-        return {"path_x": None, "punctuality_prob": None,
+        return {"path_x": None, "lateness_count": None,
+                "punctuality_prob": None,
                 "status": "NoPath", "solve_time": time.perf_counter() - t0}
 
     path_x = network.path_to_x(path)
@@ -46,6 +47,7 @@ def solve_dijkstra(network: RoadNetwork, W: np.ndarray, origin: int, destination
 
     return {
         "path_x": path_x,
+        "lateness_count": int(lateness_count),
         "punctuality_prob": punctuality_prob,
         "status": "Optimal",
         "solve_time": time.perf_counter() - t0,

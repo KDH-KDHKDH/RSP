@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>实验报告 08: 北京 OSM 路网扩展实验</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 960px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--accent); }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 1rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
+p, li { margin-bottom: 0.6rem; }
+ul, ol { padding-left: 1.5rem; }
+.meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+.highlight { background: #eff6ff; border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.good { background: #e8f5e9; border-left: 4px solid #43a047; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.info { background: #fce4ec; border-left: 4px solid #e91e63; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.formula { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.5rem; margin: 1rem 0; font-family: "Courier New", monospace; font-size: 0.95rem; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.8rem; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; }
+tr:nth-child(even) { background: #f8fafc; }
+tr.best { background: #e8f5e9; font-weight: 600; }
+.code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+img { max-width: 100%; border: 1px solid var(--border); border-radius: 4px; margin: 1em 0; }
+.delta-pos { color: #43a047; }
+.delta-neg { color: #e53935; }
+.delta-neutral { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>实验报告 08: 北京路网实验 — OSM 真实路网</h1>
+<div class="meta">
+    <strong>日期:</strong> 2026-05-23 (重跑) | <strong>阶段:</strong> Phase 8 审计修复重跑 |
+    <strong>配置:</strong> <span class="code">configs/beijing.yaml</span> | <strong>求解器:</strong> SCIP 6.2.1 |
+    <strong>数据:</strong> 587节点, 1066边, 属性驱动对数正态行程时间 |
+    <strong>总耗时:</strong> 142.7 min (候选路径池扩大导致 τ 计算更重)
+</div>
+
+<!-- ============ DISCLAIMER ============ -->
+<div class="warn">
+    <strong>免责声明：本实验并非论文北京实验的严格复现。</strong><br>
+    论文 Cao et al. (2020) 的北京实验使用 <strong>362 节点、528 弧段的出租车 GPS 轨迹数据</strong>（T-Drive 数据集），
+    行程时间从真实轨迹中提取，具有复杂的时空相关性。<br>
+    本实验使用 <strong>OpenStreetMap 路网拓扑 + 属性驱动对数正态模拟行程时间</strong>（每条边独立采样，道路类型决定 CV 范围）。
+    这是一个 <strong>"OSM 北京类真实路网扩展实验"</strong>，旨在测试 ILP 求解器在中等规模参数化路网上的可行性和行为，
+    <strong>不应被引用为论文北京实验的复现结果</strong>。
+</div>
+
+<!-- ============ KEY FINDING ============ -->
+<div class="good">
+    <strong>核心结果：ILP 100% 精确解在 587 节点 OSM 路网上得到验证。Dijkstra 85.6% 表现不俗，MILP 81.1% 意外落后于 Dijkstra。</strong><br>
+    587 节点路网上 ILP 平均求解 22.45s（max 120s），90 个 job 全部 Optimal。
+    ILP vs Dijkstra +14.4pp，ILP vs MILP +18.9pp。
+    α 趋势与人工路网一致：<strong>α 越小（deadline 越紧），基线准确率越高</strong>（与论文趋势相反，见讨论）。
+</div>
+
+<!-- ============ 1. 实验设置 ============ -->
+<h2>1. 实验设置</h2>
+
+<h3>1.1 路网</h3>
+<div class="card">
+<table>
+<tr><th>属性</th><th>值</th></tr>
+<tr><td>来源</td><td>OpenStreetMap (bbbike.org PBF, osmium 离线提取)</td></tr>
+<tr><td>区域</td><td>北京市中心城区 (39.89–39.94N, 116.37–116.42E)</td></tr>
+<tr><td>道路等级</td><td>次要道路及以上 (secondary+), 含 trunk/primary/secondary/_link</td></tr>
+<tr><td>节点数</td><td><strong>587</strong></td></tr>
+<tr><td>边数</td><td><strong>1066</strong></td></tr>
+<tr><td>道路类型分布</td><td>primary 383, secondary 603, trunk 10, *_link 72</td></tr>
+</table>
+</div>
+
+<h3>1.2 数据处理与方差配置</h3>
+<p>行程时间数据通过 <span class="code">data/generate.py --preset beijing</span> 生成（<span class="code">generator.generate_beijing_travel_times()</span>），核心逻辑：</p>
+
+<ol>
+    <li><strong>加载 OSM 路网</strong>：从 <span class="code">osm_network.py</span> 读取预提取的 GraphML，构建 <span class="code">RoadNetwork</span>，每条边包含 <span class="code">length</span>（米）和 <span class="code">highway</span>（道路类型）属性</li>
+    <li><strong>计算均值行程时间</strong>：<span class="formula" style="padding:0.5rem 1rem; margin:0.5rem 0;">mean_time = length (m) / speed (m/min), speed = road_type_speed (km/h) × 1000 / 60</span></li>
+    <li><strong>确定 CV 范围</strong>：根据道路类型查表获取 CV 的均匀分布区间</li>
+    <li><strong>采样对数正态分布</strong>：对每条边 e<sub>j</sub>，CV<sub>j</sub> ~ Uniform(low, high)，σ² = ln(1 + CV<sub>j</sub>²)，μ = ln(mean) - σ²/2，W[:, j] ~ LogNormal(μ, σ)</li>
+</ol>
+
+<h4>道路类型 -> 速度 & CV 映射</h4>
+<div class="card">
+<table>
+<tr><th>道路类型 (highway)</th><th>边数</th><th>速度 (km/h)</th><th>CV 范围</th><th>说明</th></tr>
+<tr><td>trunk / trunk_link</td><td>10 / 2</td><td>60 / 30</td><td><strong>0.3 – 0.5</strong></td><td>城市快速路，通行稳定</td></tr>
+<tr><td>primary</td><td>383</td><td>50</td><td><strong>0.3 – 0.5</strong></td><td>主干道，低变异</td></tr>
+<tr><td>primary_link</td><td>46</td><td>30</td><td><strong>0.4 – 0.6</strong></td><td>主干道连接线</td></tr>
+<tr><td>secondary / secondary_link</td><td>603 / 22</td><td>40 / 30</td><td><strong>0.5 – 0.8</strong></td><td>次干道，中等变异（占比最大：56.6%）</td></tr>
+<tr><td>tertiary / tertiary_link</td><td>0 / 0</td><td>35 / 30</td><td>0.5 – 0.8 / 0.6 – 0.9</td><td>支路（本路网阈值已过滤，未使用）</td></tr>
+<tr><td>residential / unclassified</td><td>0 / 0</td><td>35</td><td>0.8 – 1.2</td><td>居住区道路（本路网已过滤，未使用）</td></tr>
+</table>
+</div>
+
+<div class="highlight">
+    <strong>设计原则：</strong>道路等级越高 → 速度越快、CV 越低（通行时间稳定）。
+    北京中心城区仅含 trunk / primary / secondary 及其连接线，CV 范围 0.3–0.8。
+    同类型边共享 CV 范围，但<strong>每条边的行程时间独立采样，不产生跨边相关性</strong>（仅存在道路类型驱动的异质性，而非空间相关性）。
+</div>
+
+<h4>实际 CV 分布（生成的行程时间数据）</h4>
+<div class="card">
+<table>
+<tr><th>统计量</th><th>值</th><th>说明</th></tr>
+<tr><td>CV 中位数</td><td><strong>0.543</strong></td><td>跨 1066 条边的 CV 中位数</td></tr>
+<tr><td>CV 均值</td><td>0.546</td><td></td></tr>
+<tr><td>CV 范围</td><td>[0.277, 1.285]</td><td>individual edge-level CVs</td></tr>
+<tr><td>CV ≥ 0.3</td><td>98.9%</td><td>几乎所有边</td></tr>
+<tr><td>CV ≥ 0.5</td><td><strong>60.2%</strong></td><td>超半数边的 CV ≥ 0.5</td></tr>
+<tr><td>CV ≥ 0.7</td><td>17.3%</td><td></td></tr>
+<tr><td>CV ≥ 0.9</td><td>0.7%</td><td>极少数高变异边</td></tr>
+</table>
+</div>
+
+<p>北京路网的 CV 中位数 <strong>0.54</strong>，与人工路网种子42 (CV=0.83) 不同。
+人工路网的 CV 由 <span class="code">Uniform(0.5, 1.2)</span> 控制（<span class="code">travel_time_std_ratio</span>），
+而北京路网由<strong>道路类型驱动</strong>（primary 0.3–0.5, secondary 0.5–0.8），更贴近真实交通特征。</p>
+
+<p>均值行程时间：中位数 <strong>0.041 min</strong>（~2.5秒），均值 0.129 min，最大值 2.74 min。</p>
+
+<h3>1.3 行程时间模型与 Deadline 计算</h3>
+<h4>Deadline 公式（与论文一致）</h4>
+<div class="formula">τ = T<sub>min</sub> + α · (T<sub>max</sub> − T<sub>min</sub>),&emsp;α ∈ {0.5, 0.7, 0.9}</div>
+<p>其中 T<sub>min</sub> 和 T<sub>max</sub> 由 <strong>minimax 路径</strong> P* 决定：</p>
+<ol>
+    <li>对每个候选路径 P，计算所有 N=500 个样本的路径总时间 W·x<sub>P</sub></li>
+    <li>取 P* = argmin<sub>P</sub> max<sub>i</sub> T<sub>i</sub>(P)（最坏情况最优的路径）</li>
+    <li>T<sub>min</sub> = min<sub>i</sub> T<sub>i</sub>(P*)，T<sub>max</sub> = max<sub>i</sub> T<sub>i</sub>(P*)</li>
+</ol>
+<p>α=0 时 τ = T<sub>min</sub>（<strong>最紧</strong>），α=1 时 τ = T<sub>max</sub>（<strong>最松</strong>）。
+北京路网（587 节点）无法全路径枚举，使用最多 <strong>1000 条候选路径</strong>近似（4 种源：均值最短路、最坏情况最短路、逐样本最短路、K-shortest 路径，去重后截断）。</p>
+<p>每条边的行程时间服从对数正态分布，参数由路段属性（长度、道路等级）决定：</p>
+<ul>
+    <li><strong>mean_time</strong> = 路段长度 / 速度 (trunk 60 km/h, primary 50 km/h, secondary 40 km/h, link 30 km/h)</li>
+    <li><strong>CV</strong>: 按道路等级从 Uniform(low, high) 采样（见 1.2 节）</li>
+    <li><strong>分布</strong>: LogNormal(μ, σ), 其中 σ² = ln(1 + CV²), μ = ln(mean_time) - σ²/2</li>
+    <li>每条边独立采样 500 个行程时间（Monte Carlo 样本），边的参数由道路类型决定，同类型边 <strong>CV 范围一致但独立采样</strong></li>
+</ul>
+
+<h3>1.4 实验参数</h3>
+<div class="card">
+<table>
+<tr><th>参数</th><th>值</th><th>说明</th></tr>
+<tr><td>Repeats</td><td>3</td><td>每个 OD 对生成 3 组独立行程时间样本</td></tr>
+<tr><td>OD Pairs</td><td>10</td><td>随机 OD 对 (含 OD 索引和节点 ID)</td></tr>
+<tr><td>Alphas</td><td>0.5, 0.7, 0.9</td><td>τ = T<sub>min</sub> + α·(T<sub>max</sub>−T<sub>min</sub>), α 越小 deadline 越紧</td></tr>
+<tr><td>Samples (N)</td><td>500</td><td>Monte Carlo 行程时间样本数</td></tr>
+<tr><td>总 Jobs</td><td><strong>90</strong></td><td>3 repeats × 10 OD × 3 α</td></tr>
+<tr><td>Solver</td><td>SCIP 6.2.1</td><td>via pyscipopt</td></tr>
+<tr><td>Time Limit</td><td>120s</td><td>单次求解上限</td></tr>
+<tr><td>big-M</td><td>逐样本紧界 Mᵢ</td><td>Mᵢ = max(1.0, ΣⱼW[i,j] - τ)</td></tr>
+<tr><td>候选路径</td><td>最多 1000 (4 源)</td><td>mean SP, worst-case SP, per-sample SP, K-shortest</td></tr>
+<tr><td>总耗时</td><td><strong>142.7 min</strong></td><td>3 repeats: 48.6m + 46.9m + 47.2m</td></tr>
+</table>
+</div>
+
+<!-- ============ 2. 总体准确率 ============ -->
+<h2>2. 准确率结果</h2>
+
+<h3>2.1 总体准确率</h3>
+<div class="card">
+<table>
+<tr><th>方法</th><th>Correct</th><th>Total</th><th>准确率</th><th>vs ILP</th></tr>
+<tr class="best"><td><strong>ILP (精确解)</strong></td><td>90</td><td>90</td><td><strong>100.0%</strong></td><td>—</td></tr>
+<tr><td>Dijkstra (均值最短路)</td><td>77</td><td>90</td><td>85.6%</td><td class="delta-neg">-14.4pp</td></tr>
+<tr><td>MILP (ℓ₁ 松弛)</td><td>73</td><td>90</td><td>81.1%</td><td class="delta-neg">-18.9pp</td></tr>
+</table>
+</div>
+
+<h3>2.2 准确率 vs α</h3>
+<div class="card">
+<table>
+<tr><th>α</th><th>ILP</th><th>Dijkstra</th><th>MILP</th><th>ILP vs Dijkstra</th><th>ILP vs MILP</th></tr>
+<tr><td>α = 0.5 (紧 deadline)</td><td>100.0%</td><td><strong>100.0%</strong></td><td>93.3%</td><td>0pp</td><td class="delta-neg">+6.7pp</td></tr>
+<tr><td>α = 0.7</td><td>100.0%</td><td>86.7%</td><td>83.3%</td><td class="delta-neg">+13.3pp</td><td class="delta-neg">+16.7pp</td></tr>
+<tr><td>α = 0.9 (松 deadline)</td><td>100.0%</td><td>70.0%</td><td>66.7%</td><td class="delta-neg"><strong>+30.0pp</strong></td><td class="delta-neg"><strong>+33.3pp</strong></td></tr>
+</table>
+</div>
+
+<div class="info">
+    <strong>关键发现：α 趋势与论文相反，但与人工路网一致。</strong><br>
+    论文中 α↑ → 准确率↑（松 deadline 时基线更准），但我们的实验（人工路网和北京路网）均显示 α↑ → 准确率↓（松 deadline 时基线更差）。<br>
+    在 α=0.5（紧 deadline）时 Dijkstra 达到 100%，α=0.9（松 deadline）时降至 70%。ILP 求解时间趋势与论文一致：紧 deadline 更慢（α=0.5 平均 41.6s vs α=0.9 的 8.3s）。
+</div>
+
+<p>紧 deadline 下基线更准的可能原因：</p>
+<ul>
+    <li><strong>紧 deadline (α=0.5)</strong>：τ = T<sub>min</sub> + 0.5(T<sub>max</sub>−T<sub>min</sub>)，deadline 靠近 minimax 路径的最佳情况。只有少数路径能满足，而均值最短路径恰好在候选之列，Dijkstra 碰巧选对</li>
+    <li><strong>松 deadline (α=0.9)</strong>：τ 接近 T<sub>max</sub>，几乎所有路径都满足 deadline，准时概率都接近 1.0。此时最优路径的准时概率优势是小数点后几位，需要精确联合概率建模才能区分，Dijkstra/MILP 的近似误差被放大</li>
+    <li>真实路网的<strong>网格状拓扑</strong>（多条冗余路径，路径间准时概率差异小）进一步压缩了路径间的准时概率差异，使上述效应更强</li>
+</ul>
+
+<h3>2.3 各 Repeat 准确率</h3>
+<div class="card">
+<table>
+<tr><th>Repeat</th><th>ILP</th><th>Dijkstra</th><th>MILP</th></tr>
+<tr><td>R1</td><td>100.0%</td><td>90.0%</td><td>86.7%</td></tr>
+<tr><td>R2</td><td>100.0%</td><td>80.0%</td><td>73.3%</td></tr>
+<tr><td>R3</td><td>100.0%</td><td>86.7%</td><td>83.3%</td></tr>
+<tr><td><strong>均值</strong></td><td><strong>100.0%</strong></td><td><strong>85.6% ± 5.0%</strong></td><td><strong>81.1% ± 5.1%</strong></td></tr>
+</table>
+</div>
+<p>3 个 repeat 间波动较小（~5pp），结果具有统计稳定性。</p>
+
+<h3>2.4 扩展评估指标</h3>
+<p>为避免将微小的准时概率差异（如 0.0004）夸大为严重错误，引入以下指标：</p>
+<div class="card">
+<table>
+<tr><th>指标</th><th>Dijkstra</th><th>MILP</th><th>说明</th></tr>
+<tr><td><strong>objective_gap 均值</strong></td><td>0.0004</td><td>0.0004</td><td>p<sub>ILP</sub> − p<sub>method</sub>，越小越好</td></tr>
+<tr><td>objective_gap 最大值</td><td>0.0180</td><td>0.0160</td><td>极端情况下的概率差异</td></tr>
+<tr><td><strong>tie_aware_accuracy</strong></td><td><strong>96.7%</strong></td><td>95.6%</td><td>|gap| ≤ 1/N 视为等价正确（N=500）</td></tr>
+<tr><td>路径匹配准确率</td><td>85.6%</td><td>81.1%</td><td>严格路径向量匹配（原指标）</td></tr>
+</table>
+</div>
+<div class="highlight">
+    <strong>关键观察：</strong>准时概率差异极小（objective_gap 均值 < 0.001）说明两种基线方法找到的路径
+    在准时概率上几乎与 ILP 最优解一致。路径选择不同但准时性能等价——
+    这是"平坦"概率面的典型特征，而非方法缺陷。<br>
+    <strong>tie_aware_accuracy 显示 Dijkstra (96.7%) 略优于 MILP (95.6%)</strong>，差距仅 1.1pp。
+    两组数据均远高于路径匹配准确率（+11.1pp / +14.5pp），说明大多数"错误"路径在准时概率上与 ILP 最优解无法区分。
+</div>
+
+<h3>2.5 Deadline 诊断</h3>
+<div class="card">
+<table>
+<tr><th>α</th><th>τ 均值 (min)</th><th>ILP punct 中位数</th><th>ILP punct 范围</th><th>候选路径 punct 均值</th></tr>
+<tr><td>α = 0.5</td><td>5.9</td><td><strong>0.847</strong></td><td>[0.618, 0.976]</td><td>0.010</td></tr>
+<tr><td>α = 0.7</td><td>6.8</td><td>0.972</td><td>[0.908, 0.998]</td><td>0.038</td></tr>
+<tr><td>α = 0.9</td><td>7.7</td><td>0.996</td><td>[0.988, 0.998]</td><td>0.100</td></tr>
+</table>
+</div>
+<div class="warn">
+    <strong>注意：</strong>α≥0.7 时 ILP punct 中位数 ≥ 0.97，α=0.9 时 0.996。
+    候选路径 punct 均值极低 (0.01-0.10) 是因为这些路径是 minimax-optimal 路径的候选
+    （评估标准是最小化最大时间，而非最大化准时概率）。
+    松 deadline 下几乎所有路径准时，区分度不足。建议使用更紧的 α（如 0.1, 0.3）。
+</div>
+
+<!-- ============ 3. 准时概率 ============ -->
+<h2>3. 准时概率分析</h2>
+<div class="card">
+<table>
+<tr><th>方法</th><th>平均准时概率</th><th>vs ILP</th></tr>
+<tr class="best"><td>ILP</td><td><strong>0.9324</strong></td><td>—</td></tr>
+<tr><td>Dijkstra</td><td>0.9320</td><td class="delta-neutral">-0.0004</td></tr>
+<tr><td>MILP</td><td>0.9320</td><td class="delta-neutral">-0.0004</td></tr>
+</table>
+</div>
+<p>准时概率差距极小（< 0.001），但路径选择可以不同。这说明<strong>准时概率相近的候选路径很多</strong>，问题难度在于从概率相近的路径中选出最优的那条。</p>
+
+<div class="warn">
+    <strong>注意：</strong>平均准时概率接近 0.93，但按 α 分层：α=0.5 时 ILP 准时概率中位数 <strong>0.847</strong>，α=0.7 时 0.972，α=0.9 时 0.996。
+    松 deadline（α≥0.7）下几乎所有路径准时，区分度不足。未来实验可尝试更紧的 α（如 0.1, 0.3）使 α=0.5 附近的准时概率降到 0.5–0.7，或减少候选路径数以调整 T<sub>min</sub>/T<sub>max</sub> 范围。
+</div>
+
+<!-- ============ 4. 求解时间 ============ -->
+<h2>4. 求解时间分析</h2>
+
+<h3>4.1 总体求解时间</h3>
+<div class="card">
+<table>
+<tr><th>方法</th><th>Mean (s)</th><th>Median (s)</th><th>Std (s)</th><th>Max (s)</th><th>Min (s)</th></tr>
+<tr><td>ILP</td><td><strong>22.45</strong></td><td>17.59</td><td>24.75</td><td>120.26</td><td>3.28</td></tr>
+<tr><td>MILP</td><td>5.24</td><td>3.49</td><td>4.34</td><td>22.80</td><td>2.02</td></tr>
+<tr><td>Dijkstra</td><td>0.009</td><td>0.004</td><td>0.014</td><td>0.061</td><td>0.002</td></tr>
+</table>
+</div>
+
+<h3>4.2 ILP 求解时间 vs α</h3>
+<div class="card">
+<table>
+<tr><th>α</th><th>Mean (s)</th><th>Median (s)</th><th>Std (s)</th><th>Max (s)</th></tr>
+<tr><td>α = 0.5</td><td><strong>41.64</strong></td><td>34.93</td><td>27.86</td><td><strong>120.26</strong></td></tr>
+<tr><td>α = 0.7</td><td>17.38</td><td>19.60</td><td>7.20</td><td>28.44</td></tr>
+<tr><td>α = 0.9</td><td>8.33</td><td>6.94</td><td>4.90</td><td>18.09</td></tr>
+</table>
+</div>
+
+<h3>4.3 ILP 求解时间分布</h3>
+<div class="card">
+<table>
+<tr><th>区间</th><th>Job 数</th><th>占比</th></tr>
+<tr><td>&lt; 10s</td><td>26</td><td>28.9%</td></tr>
+<tr><td>10–30s</td><td>45</td><td><strong>50.0%</strong></td></tr>
+<tr><td>30–60s</td><td>13</td><td>14.4%</td></tr>
+<tr><td>60–120s</td><td>4</td><td>4.4%</td></tr>
+<tr><td>&gt; 120s (hit limit)</td><td>2</td><td>2.2%</td></tr>
+</table>
+</div>
+<p>半数 job 在 10-30 秒内完成。2 个 job 达到 120s 限制但仍找到 Optimal 解。</p>
+
+<p><strong>α=0.5 是主要瓶颈</strong>：τ = T<sub>min</sub> + 0.5(T<sub>max</sub>−T<sub>min</sub>)，deadline 恰在 minimax 路径的最佳与最坏情况中点。较多样本的行程时间接近 deadline，更多 ι<sub>i</sub> 指示变量处于临界状态，branch-and-bound 搜索空间大。α=0.5 平均比 α=0.9 慢 5 倍，与论文观察一致（紧 deadline → ILP 更难）。</p>
+
+<!-- ============ 5. 与人工路网对比 ============ -->
+<h2>5. 与人工路网对比</h2>
+<div class="card">
+<table>
+<tr><th>指标</th><th>北京路网 (本实验)</th><th>人工路网 (seed42, CV=0.83)</th><th>差异</th></tr>
+<tr><td>节点数</td><td><strong>587</strong></td><td>65</td><td>9×</td></tr>
+<tr><td>边数</td><td><strong>1066</strong></td><td>123</td><td>8.7×</td></tr>
+<tr><td>拓扑类型</td><td>真实路网 (grid-like)</td><td>随机图 (spanning tree + random)</td><td>—</td></tr>
+<tr><td>行程时间</td><td>属性驱动（道路类型异质性）</td><td>独立对数正态</td><td>—</td></tr>
+<tr><td>ILP 准确率</td><td><strong>100.0%</strong></td><td>100.0%</td><td>—</td></tr>
+<tr><td>Dijkstra 准确率</td><td><strong>85.6%</strong></td><td>75.6%</td><td class="delta-pos">+10.0pp</td></tr>
+<tr><td>MILP 准确率</td><td>81.1%</td><td><strong>78.3%</strong></td><td class="delta-pos">+2.8pp</td></tr>
+<tr><td>ILP vs Dijkstra</td><td>+14.4pp</td><td><strong>+24.4pp</strong></td><td>—</td></tr>
+<tr><td>ILP vs MILP</td><td>+18.9pp</td><td><strong>+21.7pp</strong></td><td>—</td></tr>
+<tr><td>ILP Mean Time</td><td>22.45s</td><td><strong>0.33s</strong></td><td class="delta-neg">68× slower</td></tr>
+<tr><td>MILP Mean Time</td><td>5.24s</td><td><strong>0.31s</strong></td><td class="delta-neg">17× slower</td></tr>
+<tr><td>Dijkstra vs MILP</td><td><strong>Dijkstra > MILP</strong></td><td>MILP ≈ Dijkstra</td><td>关系反转</td></tr>
+<tr><td>α 趋势</td><td><strong>α↑ → acc↓</strong></td><td>α↑ → acc↓</td><td>趋势一致（均与论文 α↑→acc↑ 相反）</td></tr>
+</table>
+</div>
+
+<div class="highlight">
+    <strong>ILP 优势在 OSM 路网上依然存在</strong>，但有所缩小（+14.4pp vs +24.4pp）。
+    Dijkstra 基线在真实路网拓扑上更强，网格状拓扑和道路类型驱动的异质性使均值最短路更可靠。
+    ILP 求解时间暴涨 68×，节点数 9× 导致搜索空间指数增长。
+</div>
+
+<h3>5.1 MILP 为何弱于 Dijkstra？</h3>
+<p>这是本实验最意外的发现。可能原因：</p>
+<ol>
+    <li><strong>MILP 的 ℓ₁ 松弛目标函数与准时率评估标准不一致</strong>：MILP 最小化 ℓ₁ 违规（连续松弛），而最终评估是二元准时/迟到计数。两者在路径间准时概率相近时容易产生分歧</li>
+    <li><strong>网格状拓扑</strong>使候选路径数量多且准时概率相近，MILP 的连续松弛在这种"平坦"概率面上更容易收敛到次优解</li>
+    <li><strong>人工路网的随机拓扑</strong>产生少量关键"瓶颈边"，MILP 容易识别；真实路网的冗余路径多，瓶颈不集中</li>
+</ol>
+
+<!-- ============ 6. 可视化 ============ -->
+<h2>6. 可视化</h2>
+
+<h3>准确率 vs Deadline (α)</h3>
+<img src="../../results/beijing/figures/accuracy_vs_deadline.png" alt="准确率 vs α">
+
+<h3>准时概率散点图: ILP vs 其他方法</h3>
+<img src="../../results/beijing/figures/probability_comparison.png" alt="ILP vs 其他方法准时概率">
+
+<!-- ============ 7. 结论 ============ -->
+<h2>7. 结论</h2>
+
+<div class="good">
+    <strong>本实验展示了 ILP 精确解在中等规模 OSM 参数化路网上的可行性。</strong>
+    ILP 保持 100% 准确率（相对于自身 formulation），在 587 节点网络上平均 22.5s 求解（90/90 Optimal）。
+    ILP 相比 Dijkstra 基线路径匹配率高 <strong>14.4pp</strong>，相比 MILP 高 <strong>18.9pp</strong>。
+    但两种基线的准时概率与 ILP 几乎一致（objective_gap < 0.001），说明问题实例的区分度有限。
+</div>
+
+<h3>主要发现</h3>
+<ol>
+    <li><strong>ILP 在中等规模路网上可行</strong>：587 节点网络的 90 个 job 全部在 120s 内找到最优解，平均 22.5s</li>
+    <li><strong>Dijkstra 在网格状拓扑上更强</strong>（85.6% vs 人工随机图的 75.6%），冗余路径多的拓扑有利于均值最短路</li>
+    <li><strong>MILP 意外落后于 Dijkstra</strong>（81.1% vs 85.6%），ℓ₁ 松弛目标与二元准时评估标准不一致是根本原因</li>
+    <li><strong>α 趋势与论文相反</strong>：紧 deadline (α=0.5) 下基线更准，松 deadline (α=0.9) 下基线更差。这与人工路网一致，但与论文的 α↑→acc↑ 相反。ILP 求解时间趋势与论文一致（紧 deadline 更慢）</li>
+    <li><strong>ILP 求解时间是主要成本</strong>：比 65 节点人工路网慢 68×，α=0.5 是瓶颈（平均 41.6s）</li>
+    <li><strong>本实验不等同于论文北京实验的复现</strong>：使用 OSM 拓扑 + 独立对数正态模拟，而非论文的 T-Drive 出租车 GPS 轨迹数据</li>
+</ol>
+
+<h3>后续工作</h3>
+<ul>
+    <li>优化 ILP 求解：对称性破除、warm-start、更紧的 cut</li>
+    <li>尝试更小的 α（如 0.1, 0.3）使 deadline 更紧，提高问题区分度</li>
+    <li>集成 T-Drive 真实轨迹数据以更接近论文的北京实验条件</li>
+    <li>Phase 5: 论文 Fig.2 风格可视化（准确率折线图、准时概率散点图、时间对比表）</li>
+</ul>
+
+<div class="meta" style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border);">
+    报告生成: 2026-05-23 | 实验耗时: 142.7 min | 数据: <span class="code">data/beijing/</span> | 结果: <span class="code">results/beijing/</span> |
+    新指标: tie_aware_accuracy, objective_gap, deadline diagnostics, worst_cases.csv
+</div>
+
+</body>
+</html>

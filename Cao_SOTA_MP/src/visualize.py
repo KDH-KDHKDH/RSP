@@ -72,12 +72,27 @@ def print_summary(df: pd.DataFrame):
     """Print summary table (like Table I in paper)."""
     print("\n=== Results Summary ===\n")
 
-    # Accuracy by method
+    # Accuracy by method (exact path match)
     if "correct" in df.columns and df["correct"].notna().any():
         acc = df.groupby("method")["correct"].mean()
-        print("Average Accuracy:")
+        print("Average Accuracy (exact path match):")
         for method, a in acc.items():
             print(f"  {method:10s}: {a:.1%}")
+
+    # Tie-aware accuracy
+    if "tie_aware_correct" in df.columns and df["tie_aware_correct"].notna().any():
+        tie_acc = df.groupby("method")["tie_aware_correct"].mean()
+        print("\nTie-Aware Accuracy (|gap| <= 1/N):")
+        for method, a in tie_acc.items():
+            print(f"  {method:10s}: {a:.1%}")
+
+    # Objective gap
+    if "objective_gap" in df.columns and df["objective_gap"].notna().any():
+        non_ilp = df[df["method"] != "ILP"]
+        gap_stats = non_ilp.groupby("method")["objective_gap"].agg(["mean", "max"])
+        print("\nObjective Gap (p_ILP - p_method):")
+        for method, row in gap_stats.iterrows():
+            print(f"  {method:10s}: mean={row['mean']:.4f} max={row['max']:.4f}")
 
     # Average solve time
     times = df.groupby("method")["solve_time"].mean()

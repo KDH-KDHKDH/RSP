@@ -10,11 +10,12 @@
 
 ```bash
 uv run python Cao_SOTA_MP/data/generate.py --preset small          # 小规模调试
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42  # 65节点
+uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42  # 65节点人工路网
+uv run python Cao_SOTA_MP/data/generate.py --preset beijing         # 北京OSM路网
 ```
 
 输出到 `data/{preset}/` 或 `data/full/seed{N}/`：
-- `network.npz` — 图拓扑(边列表 + 节点数)
+- `network.npz` — 图拓扑(边列表 + 节点数 + 边属性)
 - `travel_times.npz` — 各repeat的W矩阵
 - `od_pairs.npy` — OD对数组
 - `meta.yaml` — 生成参数
@@ -22,12 +23,11 @@ uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42  # 65节点
 ### 2.2 实验运行 `run.py`
 
 ```bash
-uv run python run.py                                          # 默认(data/small)
-uv run python run.py --data-dir data/full/seed42 --plot       # 指定数据目录
-uv run python run.py --config configs/artificial_n500.yaml --data-dir data/full/seed42
+uv run python Cao_SOTA_MP/run.py                                          # 默认(data/small)
+uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
+uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing --plot
 ```
 
-**参数说明**:
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | --config | configs/default.yaml | 配置文件路径 |
@@ -48,18 +48,35 @@ experiment:
 
 solver:
   backend: SCIP              # CBC / SCIP / GLPK (SCIP recommended)
-  big_m: 1.0e6
+  big_m: 1000000             # big-M cap (per-sample tight M is bounded by this)
   time_limit: 60
 
 output:
   dir: results/
   save_figures: true
   save_csv: true
+
+candidate_paths:
+  max_paths: 1000
+```
+
+### 2.4 求解器统一接口
+
+```python
+def solve_xxx(network: RoadNetwork, W: np.ndarray,
+              origin: int, destination: int, tau: float, ...) -> dict:
+    return {
+        "path_x": np.ndarray,        # binary edge selection vector (|L|,)
+        "lateness_count": int,       # number of late samples
+        "punctuality_prob": float,   # 1 - lateness_count/N
+        "status": str,               # "Optimal" / "NoPath" / "SolverError: ..."
+        "solve_time": float,         # seconds
+    }
 ```
 
 ## 3. 核心算法规格
 
-### 2.1 输入规格
+### 3.1 输入规格
 
 | 输入 | 类型 | 描述 |
 |------|------|------|
@@ -69,39 +86,34 @@ output:
 | τ | 正实数 | 用户定义的截止时间(deadline) |
 | N | 正整数 | 行程时间样本数量 |
 
-### 2.2 输出规格
+### 3.2 输出规格
 
 | 输出 | 类型 | 描述 |
 |------|------|------|
 | x* | 二值向量 {0,1}^{\|L\|} | 最优路径（边的选择） |
 | P* | [0,1] | 最大准时概率 = 1 - (Σιᵢ*/N) |
 
-### 2.3 ILP模型规格（精确解）
+### 3.3 ILP模型规格（精确解）
 
-**决策变量**:
+**决策变量:**
 ```
 z = [x₁, ..., x_{|L|}, ι₁, ..., ιₙ]  ∈ {0,1}^(|L|+N)
 ```
 
-**目标函数**:
+**目标函数:**
 ```
 min  Σᵢ₌₁ᴺ ιᵢ
 等价于: min f'z, 其中 f = [0,...,0, 1,...,1]
                               |L|个0   N个1
 ```
 
-**约束条件**:
+**约束条件:**
 
 1. **延迟指示约束** (N个不等式):
 ```
-Σⱼ₌₁^|L| Wᵢⱼ·xⱼ - V·ιᵢ ≤ τ,   ∀i = 1,...,N
+Σⱼ₌₁^|L| Wᵢⱼ·xⱼ - Mᵢ·ιᵢ ≤ τ,   ∀i = 1,...,N
 ```
-矩阵形式: Az ≤ B
-- A: N×(|L|+N) 矩阵
-- A[i, 1:|L|] = [Wᵢ₁, Wᵢ₂, ..., Wᵢ|L|]
-- A[i, |L|+i] = -V
-- A[i, 其他ι列] = 0
-- B = [τ, τ, ..., τ]' (N×1)
+- Mᵢ = min(big_m, max(1.0, ΣⱼW[i,j] - τ)) — 逐样本紧界，比固定大M紧200-8000×
 
 2. **流守恒约束** (|V|个等式):
 ```
@@ -116,22 +128,19 @@ Mx = b
   - b[d] = -1 (终点)
   - b[其他] = 0
 
-3. **变量界**:
+3. **变量域:**
 ```
-0 ≤ z ≤ 1 (配合整数约束)
-z ∈ {0, 1}^(|L|+N)
+xⱼ ∈ {0,1},  ιᵢ ∈ {0,1}
 ```
 
-**大M值**: V = 10¹⁰ (或根据数据范围设定足够大的值)
+### 3.4 MILP模型规格（ℓ₁松弛，用于对比）
 
-### 2.4 MILP模型规格（近似解，用于对比）
-
-**决策变量**:
+**决策变量:**
 ```
 x ∈ {0,1}^|L|, p ∈ R₊ᴺ
 ```
 
-**模型**:
+**模型:**
 ```
 min  Σᵢ₌₁ᴺ pᵢ
 s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
@@ -140,155 +149,130 @@ s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
      x ∈ {0, 1}^|L|
 ```
 
-### 2.5 Dijkstra方法规格（基线对比）
+**注意:** MILP 优化 ℓ₁ 延迟和 (Σpᵢ)，不是准时概率。目标函数不同是MILP准确率低于ILP的根本原因。
+
+### 3.5 Dijkstra方法规格（基线对比）
 
 - 边权重: 各边行程时间样本的均值 w̄ⱼ = (1/N)Σᵢ Wᵢⱼ
 - 求解最短路径（最小期望行程时间路径）
+- Post-hoc 评估: 用 W @ x 计算该路径的实际准时概率
 
-## 3. 实验规格
+## 4. 实验规格
 
-### 3.1 实验一：人工路网
+### 4.1 实验一：人工路网
 
-**路网参数**:
-- 节点数: 65
-- 边数: 123
-- 高连通度有向图
+**路网参数:**
+- 节点数: 65, 边数: 123, 高连通度有向图
+- 生成: 随机生成树 + 随机加边, seed=42
 
-**实验参数**:
-- OD对数: 20（随机指定）
-- 样本数 N: 500（每条边500个行程时间样本）
+**实验参数:**
+- OD对数: 20（随机指定，确保连通）
+- 样本数 N: 500
 - Deadline水平: α ∈ {0.5, 0.6, 0.7, 0.8, 0.9}
-- 重复次数: 每组OD+deadline重复10次
-- Ground-truth: ILP本身(已证明精确，无需枚举)
-- 图种子: seed=42 (通过 --seed 可生成不同拓扑)
+- 重复次数: 10
+- Ground-truth: ILP本身（论文已证明精确）
+- 总任务量: 10 repeats × 20 OD × 5 α = 1000 jobs
 
-**Deadline计算公式**:
+**行程时间分布:**
+- 对数正态, 每条边独立
+- mean ~ Uniform(10, 100) 分钟
+- std/mean ~ Uniform(0.5, 1.2) → CV中位数 ≈ 0.83
+
+**Deadline计算公式:**
 ```
-τ = τ₁ + α·(τ₂ - τ₁)
+τ = T_min + α·(T_max - T_min)
 ```
-- τ₂: 所有路径中，最小的"最大行程时间"
-- τ₁: τ₂对应路径的最短行程时间
+- T_max: 候选路径中的 minimax 路径时间 (min over paths of max sample time)
+- T_min: 该 minimax 路径的最短样本时间
+- 候选路径池: 4源 (mean SP, worst-case SP, per-sample SP, K-shortest), max 1000
 
-**数据生成**:
-- 每条边的行程时间随机生成（论文未指定具体分布，合理选择即可）
-- 建议: 对每条边使用不同参数的分布（如对数正态、Gamma等）
+### 4.2 实验二：北京路网
 
-### 3.2 实验二：北京路网
+**路网参数:**
+- 节点数: 587, 边数: 1066
+- 数据来源: OpenStreetMap (PBF离线提取, bbbike.org)
+- 区域: 39.89-39.94N, 116.37-116.42E (~5km × 5km)
+- 道路等级: 次要道路及以上 (secondary+)
 
-**路网参数**:
-- 节点数: 362
-- 边数: 528
-- 数据来源: 30000+出租车GPS轨迹（一天）
+**实验参数:**
+- 重复: 3次 (因网络规模大)
+- 样本数 N: 500
+- OD对: 10
+- Deadline水平: α ∈ {0.5, 0.7, 0.9}
+- 总任务量: 3 repeats × 10 OD × 3 α = 90 jobs
 
-**实验参数**:
-- 与人工路网实验类似
-- 行程时间样本来自真实GPS数据处理
+**行程时间分布:**
+- 对数正态, 参数由路段 OSM 属性决定
+- mean = 路段长度 / 速度 (按道路等级: 高速60km/h, 主干道50km/h, 次干道40km/h, 小路30km/h)
+- CV范围按道路类型:
+  - 主干道 (trunk/primary): 0.5-0.8
+  - 次干道 (secondary): 0.7-1.1
+  - 小路 (tertiary/residential): 0.9-1.3
+- CV中位数 ≈ 0.775
 
-**数据获取**:
-- 原始数据: T-Drive数据集（微软研究院发布）
-- 行程时间估计方法参考 [21] Wang et al., KDD 2014
+**方案选择:**
+- 方案 C: OSM 真实拓扑 + 属性驱动模拟行程时间
+- 原因: 拓扑真实, 参数有物理含义, 可复现
+- 注: osmnx Overpass API 不可用 (GFW), 改用 osmium 离线解析 PBF
 
-### 3.3 评估指标
+### 4.3 评估指标
 
-1. **准确率 (Accuracy)**:
-```
-Accuracy = (找到真实最优路径的次数) / (总测试次数) × 100%
-```
+1. **路径匹配准确率 (Path-Match Accuracy):**
+   - `correct = np.array_equal(method_path, ilp_path)`
+   - 严格比较边选择向量是否完全一致
 
-2. **准时概率 (Punctuality Probability)**:
-```
-P(path) = 1 - (迟到样本数 / N)
-       = 1 - Card(C(x)) / N
-```
+2. **Tie-Aware 准确率:**
+   - `tie_aware_correct = |p_ILP - p_method| ≤ 1/N`
+   - 考虑准时概率差异在采样误差范围内即为等效
 
-3. **计算时间 (Computation Time)**:
-- 各方法的平均求解时间（秒）
+3. **Objective Gap:**
+   - `objective_gap = p_ILP - p_method`
+   - 准时概率差距的量化指标
 
-### 3.4 ILP求解器对比
+4. **计算时间:** 各方法的平均求解时间（秒）
 
-测试过的开源求解器:
-- **SCIP** (当前使用): pyscipopt 6.2.1，比CBC快2.7倍，稳定可靠
-- **HiGHS** (已弃用): highspy 1.14.0 存在堆内存损坏bug，特定数据触发崩溃
-- **CBC** (备用): 开源稳定，但较慢(avg 2.06s)
-- **GLPK**: 开源，较慢
+5. **辅助指标:** late_count, delay_sum, max_delay, path_length, mean_time
 
-商业替代:
-- **CPLEX** (IBM ILOG): 论文使用，有学术许可
-- **Gurobi**: 性能接近CPLEX，有学术许可
+## 5. 求解器规格
 
-实现方案: PuLP统一接口，YAML配置切换后端
+| 求解器 | 状态 | 说明 |
+|--------|------|------|
+| **SCIP** (pyscipopt 6.2.1) | 当前使用 | 开源高性能，比CBC快2.7倍，稳定可靠 |
+| HiGHS (highspy 1.14.0) | 已弃用 | 堆内存损坏bug (double free)，特定数据触发崩溃 |
+| CBC | 备用 | 开源稳定，但较慢 (avg 2.06s) |
+| GLPK | 备用 | 开源，较慢 |
 
-## 5. 技术栈规格
-
-### 5.1 编程语言
-- **Python 3.12+**，虚拟环境在 RSP/ 根目录共享
-
-### 5.2 核心依赖
-
-| 库 | 用途 |
-|----|------|
-| numpy | 矩阵运算 |
-| scipy | 稀疏矩阵、图算法 |
-| networkx | 图建模、Dijkstra |
-| pulp | ILP/MILP建模(统一接口切换后端) |
-| pyscipopt | SCIP求解器(高性能MIP，通过PuLP SCIP_PY调用) |
-| matplotlib | 可视化 |
-| pandas | 结果汇总 |
-| pyyaml | 配置文件解析 |
-
-### 5.3 项目结构
-
-```
-Cao_SOTA_MP/
-├── docs/                        # 文档(只读参考)
-│   ├── 2020-Cao-SOTA-MP.pdf
-│   ├── paper.html
-│   ├── spec.md
-│   ├── plan.md
-│   ├── change.md
-│   ├── todo.md
-│   └── result/                  # 历史报告
-├── configs/                     # 实验配置(YAML)
-│   ├── default.yaml
-│   └── artificial_n500.yaml
-├── data/                        # 预生成数据
-│   ├── generate.py
-│   ├── small/                   # 小规模调试(10节点)
-│   └── full/                    # 65节点完整实验
-│       └── seed42/
-├── results/                     # 实验输出
-│   └── figures/
-├── src/                         # 源码(扁平，不嵌套)
-│   ├── __init__.py
-│   ├── graph.py                 # 路网 + 关联矩阵 + save/load
-│   ├── generator.py             # 数据生成 + deadline计算
-│   ├── ilp_solver.py            # ILP精确解
-│   ├── milp_solver.py           # MILP近似解
-│   ├── dijkstra_solver.py       # Dijkstra基线
-│   ├── experiment.py            # 实验编排
-│   └── visualize.py             # 画图
-├── tests/
-│   └── test_solvers.py
-├── run.py                       # 唯一实验入口
-└── README.md
-```
+商业替代: CPLEX (论文使用), Gurobi。实现方案: PuLP统一接口，YAML配置切换后端。
 
 ## 6. 验收标准
 
 ### 6.1 功能验收
-- [ ] `uv run python run.py` 能一键跑通默认配置
-- [ ] `--config` 能切换不同路网配置
-- [ ] ILP在小规模图上返回正确最优路径(与枚举一致)
-- [ ] MILP正确实现ℓ₁范数松弛
-- [ ] Dijkstra正确计算最短期望路径
+- [x] `uv run python run.py` 能一键跑通默认配置
+- [x] `--config` 能切换不同路网配置
+- [x] ILP在小规模图上返回正确最优路径(与枚举一致, test_ilp_returns_optimal通过)
+- [x] MILP正确实现ℓ₁范数松弛
+- [x] Dijkstra正确计算最短期望路径
 
 ### 6.2 性能验收（对标论文）
-- [x] 人工路网: ILP准确率 = 100% (已验证)
-- [x] 人工路网: ILP计算时间 ~0.5s (SCIP均值, 最大值~15s)
-- [ ] MILP准确率 ∈ [70%, 80%] (当前~74%, CV=0.54; 新高方差下预期更低)
-- [ ] Dijkstra准确率 ∈ [60%, 70%] (当前~84%, CV=0.54; 新高方差(CV=0.83)下预期接近论文)
+
+**人工路网 (CV=0.83, seed=42):**
+- [x] ILP准确率 = 100% (已验证)
+- [x] ILP计算时间 ~0.34s (与论文CPLEX 0.32s持平)
+- [x] Dijkstra路径匹配准确率 75.2% (论文 60-70%, 偏差 ~5pp)
+- [x] MILP路径匹配准确率 63.7% (论文 70-80%, 偏差 ~-6pp)
+- [ ] tie-aware准确率达到 >85% (Dijkstra 88.3% ✅, MILP 90.2% ✅)
+
+**北京路网 (CV=0.775, 待跑):**
+- [ ] ILP准确率 = 100%
+- [ ] ILP计算时间 < 120s (time limit)
+- [ ] Dijkstra/MILP 路径匹配准确率在合理范围
+- [ ] tie-aware 准确率 > 90%
 
 ### 6.3 可视化验收
-- [ ] 复现Fig.2(a): 准确率 vs deadline
-- [ ] 复现Fig.2(b)(c): 准时概率对比散点图
-- [ ] 复现Table I: 计算时间对比表
+- [ ] 复现 Fig.2(a): 准确率 vs α 折线图
+- [ ] 复现 Fig.2(b)(c): 准时概率对比散点图
+- [ ] 复现 Table I: 计算时间对比表
+
+### 6.4 测试验收
+- [x] 10/10 单元测试通过
+- [x] 覆盖: 图操作 + 关联矩阵 + ILP最优性(枚举验证) + 求解器接口

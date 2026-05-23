@@ -1,0 +1,9 @@
+location: Beijing, China
+network_source: OpenStreetMap (osmnx)
+num_edges: 1066
+num_nodes: 587
+num_od_pairs: 20
+num_repeats: 10
+num_samples: 500
+seed: 42
+travel_time_model: lognormal, attribute-driven (length/speed + road-type CV)

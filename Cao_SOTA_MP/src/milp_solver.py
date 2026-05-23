@@ -52,12 +52,14 @@ def solve_milp(network: RoadNetwork, W: np.ndarray, origin: int, destination: in
     try:
         prob.solve(solver)
     except Exception as e:
-        return {"path_x": None, "punctuality_prob": None,
+        return {"path_x": None, "lateness_count": None,
+                "punctuality_prob": None,
                 "status": f"SolverError: {e}", "solve_time": 0.0}
 
     status = pulp.LpStatus[prob.status]
     if status != "Optimal":
-        return {"path_x": None, "punctuality_prob": None,
+        return {"path_x": None, "lateness_count": None,
+                "punctuality_prob": None,
                 "status": status, "solve_time": prob.solutionTime}
 
     path_x = np.array([v.varValue for v in x])
@@ -69,6 +71,7 @@ def solve_milp(network: RoadNetwork, W: np.ndarray, origin: int, destination: in
 
     return {
         "path_x": path_x,
+        "lateness_count": int(lateness_count),
         "punctuality_prob": punctuality_prob,
         "status": status,
         "solve_time": prob.solutionTime,

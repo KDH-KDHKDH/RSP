@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>实验报告索引 — Cao SOTA MP</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 960px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.3rem; color: var(--accent); }
+.subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+h2 { font-size: 1.2rem; margin: 2rem 0 0.8rem; padding-bottom: 0.3rem; border-bottom: 2px solid var(--accent); }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.8rem; text-align: left; }
+th { background: #f1f5f9; font-weight: 600; white-space: nowrap; }
+tr:nth-child(even) { background: #f8fafc; }
+tr:hover { background: #eff6ff; }
+td:first-child { text-align: center; font-weight: 600; white-space: nowrap; }
+td:nth-child(2) { white-space: nowrap; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 0.78rem; font-weight: 600; }
+.tag-phase1 { background: #e8f5e9; color: #2e7d32; }
+.tag-phase4 { background: #e3f2fd; color: #1565c0; }
+.tag-phase7 { background: #fce4ec; color: #c62828; }
+.tag-audit  { background: #fef3c7; color: #e65100; }
+.tag-beijing { background: #f3e5f5; color: #7b1fa2; }
+.tag-phase8 { background: #e8f5e9; color: #2e7d32; }
+.note { color: var(--muted); font-size: 0.85rem; margin-top: 1.5rem; }
+</style>
+</head>
+<body>
+
+<h1>实验报告索引</h1>
+<div class="subtitle">Cao et al. (2020) ILP 精确解复现项目 | 共 11 份报告</div>
+
+<h2>Phase 8 完成后 — 项目审计</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>11</td>
+  <td><a href="11_project_audit.html">11_project_audit.html</a></td>
+  <td>2026-05-23</td>
+  <td><span class="tag tag-audit">审计</span></td>
+  <td>项目全面审计：代码·数据·结果·文档，发现4个待改进项，ILP=100%复现确认</td>
+</tr>
+</table>
+
+<h2>Phase 8 — 审计修复验证</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>10</td>
+  <td><a href="10_beijing_audit_fix.html">10_beijing_audit_fix.html</a></td>
+  <td>2026-05-23</td>
+  <td><span class="tag tag-phase8">审计修复</span></td>
+  <td>北京路网重跑：tie_aware 双高 (Dijkstra 96.7%, MILP 95.6%), 仅 3 worst cases, objective_gap &lt; 0.001</td>
+</tr>
+<tr>
+  <td>09</td>
+  <td><a href="09_seed42_audit_fix.html">09_seed42_audit_fix.html</a></td>
+  <td>2026-05-23</td>
+  <td><span class="tag tag-phase8">审计修复</span></td>
+  <td>人工路网重跑：tie_aware MILP 90.2% > Dijkstra 88.3%, ILP 0.338s</td>
+</tr>
+</table>
+
+<h2>Phase 6 — 北京路网</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>08</td>
+  <td><a href="08_beijing.html">08_beijing.html</a></td>
+  <td>2026-05-23</td>
+  <td><span class="tag tag-beijing">北京</span></td>
+  <td>北京 OSM 路网实验 (587节点, 1066边): ILP 100%, Dijkstra 85.6%, MILP 81.1%, ILP 22.5s</td>
+</tr>
+</table>
+
+<h2>Phase 7 — 求解器优化</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>07</td>
+  <td><a href="07_seed42_tightM.html">seed42_tightM.html</a></td>
+  <td>2026-05-23</td>
+  <td><span class="tag tag-phase7">求解器</span></td>
+  <td>Tight big-M 优化验证：ILP 求解时间 -39% (0.54s→0.33s)，与论文 CPLEX 0.32s 持平</td>
+</tr>
+</table>
+
+<h2>Phase 4b — 高方差实验</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>06</td>
+  <td><a href="06_seed42_highvar.html">06_seed42_highvar.html</a></td>
+  <td>2026-05-23</td>
+  <td><span class="tag tag-phase4">实验</span></td>
+  <td>种子42高方差最终实验 (CV=0.83)：ILP 100%, Dijkstra 75.2%, MILP 63.7%</td>
+</tr>
+<tr>
+  <td>05</td>
+  <td><a href="05_project_status.html">05_project_status.html</a></td>
+  <td>2026-05-23</td>
+  <td><span class="tag tag-audit">审计</span></td>
+  <td>项目状态全面评估：代码·数据·结果·文档·测试，发现 12 个问题</td>
+</tr>
+<tr>
+  <td>04</td>
+  <td><a href="04_seed42_final.html">04_seed42_final.html</a></td>
+  <td>2026-05-22</td>
+  <td><span class="tag tag-phase4">实验</span></td>
+  <td>种子42实验 (CV=0.54，路径匹配修复)：ILP 100%, Dijkstra 83.5%, MILP 73.8%</td>
+</tr>
+<tr>
+  <td>03</td>
+  <td><a href="03_audit_seed42.html">03_audit_seed42.html</a></td>
+  <td>2026-05-21</td>
+  <td><span class="tag tag-audit">审计</span></td>
+  <td>项目审计：发现数据方差过低 (CV=0.25)，根因分析与修复方案</td>
+</tr>
+</table>
+
+<h2>Phase 1-4 — 早期实验</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>02</td>
+  <td><a href="02_n500_solver_compare.html">02_n500_solver_compare.html</a></td>
+  <td>2026-05-21</td>
+  <td><span class="tag tag-phase1">实验</span></td>
+  <td>N=500实验 + HiGHS/CBC 求解器对比 (HiGHS 快 4.8×，但后续发现内存bug)</td>
+</tr>
+<tr>
+  <td>01</td>
+  <td><a href="01_initial_65node.html">01_initial_65node.html</a></td>
+  <td>2026-05-21</td>
+  <td><span class="tag tag-phase1">实验</span></td>
+  <td>首次65节点实验 (N=100, CBC)：ILP 100%, MILP 97.3%, Dijkstra 96.5%</td>
+</tr>
+</table>
+
+<h2>关键指标演进</h2>
+<table>
+<tr><th>报告</th><th>ILP</th><th>Dijkstra</th><th>MILP</th><th>ILP Time</th><th>CV</th><th>说明</th></tr>
+<tr>
+  <td><a href="01_initial_65node.html">01</a></td>
+  <td>100%</td>
+  <td>96.5%</td>
+  <td>97.3%</td>
+  <td>2.06s</td>
+  <td>0.25</td>
+  <td>CBC, N=100, CV 过低</td>
+</tr>
+<tr>
+  <td><a href="02_n500_solver_compare.html">02</a></td>
+  <td>100%</td>
+  <td>97.1%</td>
+  <td>98.0%</td>
+  <td>0.42s</td>
+  <td>0.25</td>
+  <td>HiGHS, N=500, CV 仍低</td>
+</tr>
+<tr>
+  <td><a href="04_seed42_final.html">04</a></td>
+  <td>100%</td>
+  <td>83.5%</td>
+  <td>73.8%</td>
+  <td>—</td>
+  <td>0.54</td>
+  <td>一次修复后，路径匹配</td>
+</tr>
+<tr>
+  <td><a href="06_seed42_highvar.html">06</a></td>
+  <td>100%</td>
+  <td>75.2%</td>
+  <td>63.7%</td>
+  <td>0.50s</td>
+  <td>0.83</td>
+  <td>二次修复，SCIP, 方差充足</td>
+</tr>
+<tr>
+  <td><a href="07_seed42_tightM.html">07</a></td>
+  <td><strong>100%</strong></td>
+  <td><strong>75.6%</strong></td>
+  <td><strong>78.3%</strong></td>
+  <td><strong>0.33s</strong></td>
+  <td><strong>0.83</strong></td>
+  <td><strong>Tight big-M, SCIP, 与论文持平</strong></td>
+</tr>
+<tr>
+  <td><a href="08_beijing.html">08</a></td>
+  <td><strong>100%</strong></td>
+  <td><strong>85.6%</strong></td>
+  <td><strong>81.1%</strong></td>
+  <td><strong>22.45s</strong></td>
+  <td><strong>—</strong></td>
+  <td><strong>北京 OSM, 587节点, MILP < Dijkstra</strong></td>
+</tr>
+</table>
+
+<div class="note">
+  项目仓库：<code>Cao_SOTA_MP/</code> | 论文：Cao et al. (2020) | 求解器：SCIP 6.2.1 via pyscipopt
+</div>
+
+</body>
+</html>

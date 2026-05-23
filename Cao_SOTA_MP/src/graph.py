@@ -23,21 +23,48 @@ class RoadNetwork:
     @classmethod
     def load(cls, path: str | Path) -> "RoadNetwork":
         """Load network from npz file."""
-        data = np.load(path)
+        data = np.load(path, allow_pickle=True)
         num_nodes = int(data["num_nodes"])
         edges_arr = data["edges"]
         G = nx.DiGraph()
         G.add_nodes_from(range(num_nodes))
         G.add_edges_from(edges_arr.tolist())
+
+        if "edge_lengths" in data:
+            for j, (u, v) in enumerate(edges_arr):
+                G[u][v]["length"] = float(data["edge_lengths"][j])
+        if "edge_highway_codes" in data and "highway_types" in data:
+            codes = data["edge_highway_codes"]
+            types = data["highway_types"].tolist()
+            for j, (u, v) in enumerate(edges_arr):
+                G[u][v]["highway"] = types[int(codes[j])]
+
         return cls.from_networkx(G)
 
     def save(self, path: str | Path) -> None:
         """Save network to npz file."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(path,
-                 num_nodes=self.num_nodes,
-                 edges=np.array(self.edges, dtype=np.int32))
+        kwargs = dict(num_nodes=self.num_nodes,
+                      edges=np.array(self.edges, dtype=np.int32))
+
+        # Save edge attributes if present
+        if self.edges and self.graph.edges.get(self.edges[0], {}):
+            first_attrs = self.graph.edges.get(self.edges[0], {})
+            if "length" in first_attrs:
+                lengths = [self.graph.edges[e].get("length", 0.0) for e in self.edges]
+                kwargs["edge_lengths"] = np.array(lengths, dtype=np.float64)
+            if "highway" in first_attrs:
+                highway_set = sorted(set(
+                    self.graph.edges[e].get("highway", "unknown") for e in self.edges
+                ))
+                highway_map = {h: i for i, h in enumerate(highway_set)}
+                codes = [highway_map[self.graph.edges[e].get("highway", "unknown")]
+                         for e in self.edges]
+                kwargs["edge_highway_codes"] = np.array(codes, dtype=np.int32)
+                kwargs["highway_types"] = np.array(highway_set)
+
+        np.savez(path, **kwargs)
 
     @property
     def num_nodes(self) -> int:

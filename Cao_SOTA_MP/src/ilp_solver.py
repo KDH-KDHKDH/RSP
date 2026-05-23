@@ -11,9 +11,12 @@ def solve_ilp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int
     """Solve the punctuality problem exactly via ILP.
 
     min  Σ ιᵢ
-    s.t. Σⱼ Wᵢⱼ·xⱼ - V·ιᵢ ≤ τ,  ∀i
+    s.t. Σⱼ Wᵢⱼ·xⱼ - Mᵢ·ιᵢ ≤ τ,  ∀i
          Mx = b
          x ∈ {0,1}, ι ∈ {0,1}
+
+    Uses per-sample tight big-M: Mᵢ = min(big_m, max(1.0, ΣⱼW[i,j] - τ)).
+    This is 200-8000x smaller than a fixed big-M, giving tighter LP relaxation.
 
     Args:
         network: Road network
@@ -21,8 +24,8 @@ def solve_ilp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int
         origin: Origin node
         destination: Destination node
         tau: Deadline
-        big_m: Big-M value
-        solver_name: PuLP solver backend (CBC, GLPK, CPLEX, HiGHS)
+        big_m: Big-M cap (used as upper bound for per-sample Mᵢ)
+        solver_name: PuLP solver backend (CBC, GLPK, CPLEX, SCIP)
         time_limit: Solver time limit in seconds
 
     Returns:
@@ -43,10 +46,14 @@ def solve_ilp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int
     # Objective: min Σ ιᵢ
     prob += pulp.lpSum(iota)
 
-    # Delay indicator constraints: Wᵢ'x - V·ιᵢ ≤ τ
+    # Delay indicator constraints: Wᵢ'x - Mᵢ·ιᵢ ≤ τ
+    # Per-sample tight M: worst-case path time (sum of all edge times) - tau
+    # Falls back to big_m cap for safety
     for i in range(N):
+        Mi = max(1.0, float(np.sum(W[i, :]) - tau))
+        Mi = min(Mi, big_m)
         prob += (
-            pulp.lpSum(W[i, j] * x[j] for j in range(num_edges)) - big_m * iota[i] <= tau,
+            pulp.lpSum(W[i, j] * x[j] for j in range(num_edges)) - Mi * iota[i] <= tau,
             f"delay_{i}"
         )
 

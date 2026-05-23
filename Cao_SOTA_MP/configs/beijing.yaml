@@ -1,0 +1,27 @@
+# Beijing OSM road network experiment
+# Generate data first: uv run python Cao_SOTA_MP/data/generate.py --preset beijing
+# Then run: uv run python run.py --config configs/beijing.yaml --data-dir data/beijing --plot
+#
+# SCIP solver uses internal parallelism (multi-threaded branch-and-bound).
+# Python-level parallelism not needed; SCIP already saturates CPU for MIP.
+data:
+  dir: data/beijing
+  num_samples: 500
+
+experiment:
+  num_repeats: 3
+  num_od_pairs: 10
+  alphas: [0.5, 0.7, 0.9]
+
+solver:
+  backend: SCIP
+  big_m: 1000000
+  time_limit: 120
+
+output:
+  dir: results/beijing/
+  save_figures: true
+  save_csv: true
+
+candidate_paths:
+  max_paths: 1000

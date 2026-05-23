@@ -8,7 +8,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.experiment import run_experiment
+from src.experiment import run_experiment, _save_worst_cases
 from src.visualize import plot_accuracy_vs_deadline, plot_probability_comparison, print_summary
 
 
@@ -68,6 +68,9 @@ def main():
         csv_path = f"{output_dir}/results.csv"
         df.to_csv(csv_path, index=False)
         print(f"Results saved to: {csv_path}")
+
+    # Save worst cases
+    _save_worst_cases(df, output_dir)
 
     # Plot
     if args.plot or config.get("output", {}).get("save_figures", False):
