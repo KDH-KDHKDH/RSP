@@ -13,7 +13,7 @@
 | `configs/artificial_n500.yaml` | 实验配置 (SCIP求解器) |
 | `src/generator.py` | 数据生成逻辑 (CV: Uniform(0.5, 1.2)) |
 | `docs/change.md` | 变更日志 |
-| `docs/result/` | 历史报告 |
+| `docs/report/` | 历史报告 |
 
 ## 已完成
 - [x] Phase 1-2: 环境 + 核心算法 + 测试(10/10)
@@ -22,17 +22,17 @@
 - [x] Phase 4b重构: 数据生成分离, data按 small / full/seed* 组织
 - [x] 求解器迁移: HiGHS → SCIP (HiGHS内存崩溃)
 - [x] 全面审计: 算法实现正确，根因是数据方差过低(CV 0.25)
-- [x] 审计报告: docs/result/03_audit_seed42.html
+- [x] 审计报告: docs/report/03_audit_seed42.html
 - [x] 修复: generator.py 方差参数 0.1-0.4 → 0.3-0.8 → 0.5-1.2
 - [x] CV中位数: 0.25 → 0.54 → 0.83
 - [x] 种子42实验 (CV=0.54) → ILP 100%, Dijkstra 83.5%, MILP 73.8%
-- [x] 种子42分析报告 → docs/result/04_seed42_final.html
+- [x] 种子42分析报告 → docs/report/04_seed42_final.html
 - [x] 准确率指标修复: 概率匹配 → 路径向量匹配 (_path_match)
-- [x] 项目状态评估报告 → docs/result/05_project_status.html
+- [x] 项目状态评估报告 → docs/report/05_project_status.html
 - [x] P0-P3全面修复: Git提交, README, 文档对齐, 方差记录, 代码清理
 - [x] 简化为单种子模式: 保留 --seed 接口, 清理多seed计划
 - [ ] 种子42实验 (新高方差数据, CV=0.83)
-- [ ] 结果报告 → docs/result/06_seed42_final.html
+- [ ] 结果报告 → docs/report/06_seed42_final.html
 
 ## 后续
 - [ ] Phase 5: 可视化优化(论文Fig.2风格)

@@ -25,7 +25,7 @@
 - 核心算法正确，ILP 100%精确解已复现
 - 发现 12 个问题 (P0: 2, P1: 3, P2: 4, P3: 3)
 - 最严重: Git零提交、README为空、spec.md过期引用、meta.yaml不记录方差
-- 报告: docs/result/05_project_status.html
+- 报告: docs/report/05_project_status.html
 
 ## [2026-05-22] 二次增大行程时间方差
 - **修复**: `generator.py` 方差参数从 `Uniform(0.3, 0.8)` 改为 `Uniform(0.5, 1.2)`
@@ -41,7 +41,7 @@
 - ILP vs Dijkstra +16.5pp, ILP vs MILP +26.2pp
 - 准时概率差距 < 0.001（问题难度仍偏低但核心结论成立）
 - α 趋势与论文仍有差异（可能因论文 deadline 参数未公开）
-- 报告: docs/result/04_seed42_final.html
+- 报告: docs/report/04_seed42_final.html
 
 ## [2026-05-22] 数据生成修复: 增大行程时间方差
 - **修复**: `generator.py` 方差参数从 `Uniform(0.1, 0.4)` 改为 `Uniform(0.3, 0.8)`
@@ -56,7 +56,7 @@
 - **根因**: 行程时间 CV 过低 (中位数 0.25)，导致均值最短路径几乎总是最优
 - 准确率 vs α 趋势颠倒：论文 α↑→acc↑, 我们 α↑→acc↓
 - 修复方案：扩大 generator.py 方差参数 (std/mean 从 0.1-0.4 改为 0.3-0.8)
-- 报告: docs/result/03_audit_seed42.html
+- 报告: docs/report/03_audit_seed42.html
 
 ## [2026-05-21] 求解器迁移: HiGHS → SCIP + 种子42实验完成
 - HiGHS 存在堆内存损坏 bug (<code>double free</code>)，特定数据（种子99）在单次求解内崩溃，子进程隔离无效
@@ -66,7 +66,7 @@
 - 种子42 N=500实验完成: ILP 100%, MILP 97.8%, Dijkstra 96.9%
 - 发现: α 对方法优劣影响显著，低 α 时 Dijkstra 反超 MILP
 - `run.py` 新增 `sys.stdout.reconfigure(line_buffering=True)` 修复管道缓冲问题
-- 报告: docs/result/03_scip_seed42.html (已被审计报告取代)
+- 报告: docs/report/03_scip_seed42.html (已被审计报告取代)
 
 ## [2026-05-21] 重构: 数据生成与算法主流程分离
 - 新增 `data/generate.py` 数据生成脚本(支持 --preset small/full, --seed)
@@ -84,12 +84,12 @@
 - `_get_solver()` 改用 `pulp.HiGHS` Python API(避免需要外部二进制)
 - N=500实验完成(seed=42): ILP 100%, MILP 98.0%, Dijkstra 97.1%
 - 求解器对比: CBC avg 2.06s vs HiGHS avg 0.42s (ILP)
-- 报告: docs/result/02_n500_solver_compare.html
+- 报告: docs/report/02_n500_solver_compare.html
 
 ## [2026-05-21] Phase 3: 65节点实验
 - 65节点N=100实验完成: ILP 100%, MILP 97.3%, Dijkstra 96.5%
 - 枚举优化: 用ILP作为ground-truth(论文已证明精确)
-- 报告: docs/result/01_initial_65node.html
+- 报告: docs/report/01_initial_65node.html
 
 ## [2026-05-21] Phase 1-2: 项目初始化 + 核心实现
 - 项目结构搭建，RSP级别共享venv(uv + Python 3.12)

@@ -67,31 +67,31 @@ uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
 ### Phase 3: 65节点实验 ✅
 - [x] 枚举优化: 用ILP作为ground-truth(已证明精确)
 - [x] N=100实验: ILP 100%, MILP 97.3%, Dijkstra 96.5%
-- [x] 结果报告: `docs/result/01_initial_65node.html`
+- [x] 结果报告: `docs/report/01_initial_65node.html`
 
 ### Phase 4: 求解器升级与N=500实验 ✅
 - [x] 安装HiGHS求解器(比CBC快4.8倍)
 - [x] N=500实验(seed=42): ILP 100%, MILP 98.0%, Dijkstra 97.1%
-- [x] 结果报告: `docs/result/02_n500_solver_compare.html`
+- [x] 结果报告: `docs/report/02_n500_solver_compare.html`
 - [x] HiGHS 发现内存崩溃 bug，迁移到 SCIP (pyscipopt 6.2.1)
 - [x] SCIP 种子42实验完成: ILP 100%, MILP 97.8%, Dijkstra 96.9%
-- [x] 报告: `docs/result/03_audit_seed42.html` (取代了之前的03_scip_seed42.html)
+- [x] 报告: `docs/report/03_audit_seed42.html` (取代了之前的03_scip_seed42.html)
 
 ### Phase 4b: 审计 + 数据修复 ← 当前
 - [x] 数据生成与算法分离(data/generate.py)
 - [x] data按 small / full/seed* / beijing 组织
 - [x] run.py 新增 --data-dir，保持唯一入口
 - [x] 全面审计：发现数据方差过低 (CV 中位数 0.25)，导致准确率偏离论文 18-37pp
-- [x] 审计报告: `docs/result/03_audit_seed42.html`
+- [x] 审计报告: `docs/report/03_audit_seed42.html`
 - [x] **修复**: generator.py 方差参数 0.1-0.4 → 0.3-0.8, CV中位数 0.25 → 0.54
 - [x] 种子42最终实验 (CV=0.54): ILP 100%, Dijkstra 83.5%, MILP 73.8%
-- [x] 种子42分析报告: `docs/result/04_seed42_final.html`
+- [x] 种子42分析报告: `docs/report/04_seed42_final.html`
 - [x] 准确率指标修复: 概率匹配 → 路径向量匹配 (_path_match)
 - [x] **二次修复**: generator.py 方差参数 0.3-0.8 → 0.5-1.2, CV中位数 0.54 → 0.83
 - [x] 数据集重新生成 (新高方差)
 - [x] P0-P3全面修复: Git, README, 文档对齐, meta.yaml方差记录, 代码清理
 - [ ] 种子42实验 (新高方差数据, CV=0.83)
-- [ ] 结果报告: `docs/result/06_seed42_final.html`
+- [ ] 结果报告: `docs/report/06_seed42_final.html`
 
 ### Phase 5: 可视化优化
 - [ ] 复现Fig.2(a): 准确率 vs α 折线图
@@ -105,7 +105,7 @@ uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
 
 ## 报告命名规则
 
-`docs/result/` 下按序号命名，保留历史：
+`docs/report/` 下按序号命名，保留历史：
 - `01_initial_65node.html` — 首次65节点实验(N=100, CBC)
 - `02_n500_solver_compare.html` — N=500实验 + 求解器对比(HiGHS)
 - `03_audit_seed42.html` — 项目审计：发现数据方差问题 + 根因分析
