@@ -1,8 +1,6 @@
 # Full artificial network experiment (65 nodes, N=500)
-# Use --data-dir to switch between seeds:
+# Use --seed to generate different graph topologies:
 #   uv run python run.py --data-dir data/full/seed42
-#   uv run python run.py --data-dir data/full/seed99
-#   uv run python run.py --data-dir data/full/seed200
 data:
   dir: data/full/seed42
   num_samples: 500

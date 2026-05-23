@@ -12,9 +12,7 @@ Cao_SOTA_MP/
 │   ├── generate.py              # 数据生成脚本(独立入口)
 │   ├── small/                   # 小规模调试(10节点)
 │   ├── full/                    # 65节点完整实验
-│   │   ├── seed42/
-│   │   ├── seed99/
-│   │   └── seed200/
+│   │   └── seed42/
 │   └── beijing/                 # 北京路网(待实现)
 ├── docs/
 │   ├── 2020-Cao-SOTA-MP.pdf     # 原始论文
@@ -46,14 +44,12 @@ Cao_SOTA_MP/
 
 ```bash
 # Step 1: 生成数据
+uv run python Cao_SOTA_MP/data/generate.py --preset small
 uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 99
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 200
 
-# Step 2: 跑实验(--data-dir 切换不同seed)
+# Step 2: 跑实验
+uv run python Cao_SOTA_MP/run.py                                          # small (默认)
 uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
-uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed99 --plot
-uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed200 --plot
 ```
 
 ## 阶段划分
@@ -85,21 +81,17 @@ uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed200 --plot
 - [x] 数据生成与算法分离(data/generate.py)
 - [x] data按 small / full/seed* / beijing 组织
 - [x] run.py 新增 --data-dir，保持唯一入口
-- [x] 生成3个full数据集(seed=42/99/200)
-- [x] 种子42实验完成 (SCIP)
 - [x] 全面审计：发现数据方差过低 (CV 中位数 0.25)，导致准确率偏离论文 18-37pp
 - [x] 审计报告: `docs/result/03_audit_seed42.html`
 - [x] **修复**: generator.py 方差参数 0.1-0.4 → 0.3-0.8, CV中位数 0.25 → 0.54
-- [x] 种子42最终实验: ILP 100%, Dijkstra 83.5%, MILP 73.8%
+- [x] 种子42最终实验 (CV=0.54): ILP 100%, Dijkstra 83.5%, MILP 73.8%
 - [x] 种子42分析报告: `docs/result/04_seed42_final.html`
 - [x] 准确率指标修复: 概率匹配 → 路径向量匹配 (_path_match)
 - [x] **二次修复**: generator.py 方差参数 0.3-0.8 → 0.5-1.2, CV中位数 0.54 → 0.83
-- [x] 3个数据集重新生成 (新高方差)
-- [ ] 种子42实验 (新高方差数据)
-- [ ] 种子99实验
-- [ ] 种子200实验
-- [ ] 各seed结果分析 + 总体对比
-- [ ] 结果报告: `docs/result/06_multi_seed_compare.html`
+- [x] 数据集重新生成 (新高方差)
+- [x] P0-P3全面修复: Git, README, 文档对齐, meta.yaml方差记录, 代码清理
+- [ ] 种子42实验 (新高方差数据, CV=0.83)
+- [ ] 结果报告: `docs/result/06_seed42_final.html`
 
 ### Phase 5: 可视化优化
 - [ ] 复现Fig.2(a): 准确率 vs α 折线图
@@ -119,7 +111,7 @@ uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed200 --plot
 - `03_audit_seed42.html` — 项目审计：发现数据方差问题 + 根因分析
 - `04_seed42_final.html` — 种子42最终实验 (CV=0.54, 路径匹配修复后)
 - `05_project_status.html` — 项目状态全面评估 (2026-05-23)
-- `06_multi_seed_compare.html` — 多种子(42/99/200)总体对比 (待完成)
+- `06_seed42_final.html` — 种子42高方差实验 (CV=0.83, 待完成)
 
 ## 关键决策
 
@@ -128,4 +120,4 @@ uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed200 --plot
 | Ground-truth | ILP本身 | 论文已证明ILP=精确解 |
 | 求解器 | PuLP + SCIP (pyscipopt 6.2.1) | 开源高性能，比CBC快2.7倍，稳定可靠(HiGHS有内存bug) |
 | 数据流 | 生成与求解分离 | 可预检查图性质，隔离问题 |
-| 多seed | 42/99/200 | 验证结果对图拓扑的敏感性 |
+| 接口设计 | --data-dir / --seed | 保留多seed扩展能力，当前聚焦单seed |

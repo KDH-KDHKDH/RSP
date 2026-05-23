@@ -45,8 +45,8 @@ ILP = 100% accuracy reproduced. ILP outperforms Dijkstra by +16.5pp and MILP by 
 
 ```
 Cao_SOTA_MP/
-├── data/                # Generated datasets (small / full/seed*)
-│   └── generate.py      # Data generation entry point
+├── data/                # Generated datasets (small / full/seed42)
+│   └── generate.py      # Data generation entry point (--preset, --seed)
 ├── configs/             # YAML experiment configs
 ├── src/                 # Source code (flat package)
 │   ├── graph.py         # RoadNetwork + incidence matrix
@@ -69,7 +69,6 @@ Switch datasets via `--data-dir`:
 
 ```bash
 uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/artificial_n500.yaml --data-dir Cao_SOTA_MP/data/full/seed42
-uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/artificial_n500.yaml --data-dir Cao_SOTA_MP/data/full/seed99
 ```
 
 ## Key Design Decisions

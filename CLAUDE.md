@@ -13,9 +13,7 @@ The active implementation is in `Cao_SOTA_MP/`. `YangLixing_SOTA_TimeDependent/`
 ```bash
 # Generate experiment data
 uv run python Cao_SOTA_MP/data/generate.py --preset small              # small debug dataset (10 nodes)
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42     # 65-node, N=500 dataset
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 123
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 456
+uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42     # 65-node, N=500 dataset (default seed)
 
 # Run experiments
 uv run python Cao_SOTA_MP/run.py                                                      # default (data/small)
@@ -70,12 +68,12 @@ All solvers share the same interface: they take `(network, W, origin, destinatio
 YAML-based (`configs/*.yaml`). Key sections:
 - `data.dir` — path to pre-generated data (overridable via `--data-dir`)
 - `experiment.alphas` — deadline levels [0.5, 0.6, 0.7, 0.8, 0.9]
-- `solver.backend` — PuLP solver: `HiGHS`, `CBC`, `GLPK`, `SCIP`
+- `solver.backend` — PuLP solver: `SCIP`, `CBC`, `GLPK`
 
 ### Design decisions
 
 - **ILP is ground-truth** — no path enumeration needed for accuracy evaluation on large graphs.
 - **Data generation is separate from solving** — `data/generate.py` produces self-contained directories that `run.py` consumes. This isolates graph topology issues from solver issues.
-- **HiGHS is the preferred solver** — ~5x faster than CBC for ILP on 65-node graphs with N=500.
+- **SCIP is the preferred solver** — stable open-source solver via pyscipopt 6.2.1. HiGHS was abandoned due to a memory corruption bug.
 - **Flat `src/`** — no nested subpackages; all modules import from `src.*` with a `sys.path.insert` in entry scripts.
 - **Shared venv at RSP level** — managed by `uv` with `pyproject.toml` at repo root.

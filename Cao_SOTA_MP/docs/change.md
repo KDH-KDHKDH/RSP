@@ -1,5 +1,11 @@
 # 变更日志 (Changelog)
 
+## [2026-05-23] 简化为单种子模式
+- 移除多种子实验计划 (99/200)，聚焦单种子 (seed42)
+- 保留 `--seed` 和 `--data-dir` 接口 (可随时切换种子)
+- 清理 data/full/seed99, data/full/seed200 数据目录
+- 更新所有文档: todo, plan, spec, README, config 注释
+
 ## [2026-05-23] 项目全面修复 (P0-P3)
 - **P0**: Git仓库初始化 (移除嵌套.git), 编写 README.md (项目描述、快速开始、架构)
 - **P0**: pyproject.toml 添加 pyscipopt 依赖

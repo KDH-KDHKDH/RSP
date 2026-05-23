@@ -11,8 +11,6 @@
 ```bash
 uv run python Cao_SOTA_MP/data/generate.py --preset small          # 小规模调试
 uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42  # 65节点
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 99
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 200
 ```
 
 输出到 `data/{preset}/` 或 `data/full/seed{N}/`：
@@ -26,7 +24,7 @@ uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 200
 ```bash
 uv run python run.py                                          # 默认(data/small)
 uv run python run.py --data-dir data/full/seed42 --plot       # 指定数据目录
-uv run python run.py --config configs/artificial_n500.yaml --data-dir data/full/seed99
+uv run python run.py --config configs/artificial_n500.yaml --data-dir data/full/seed42
 ```
 
 **参数说明**:
@@ -162,7 +160,7 @@ s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
 - Deadline水平: α ∈ {0.5, 0.6, 0.7, 0.8, 0.9}
 - 重复次数: 每组OD+deadline重复10次
 - Ground-truth: ILP本身(已证明精确，无需枚举)
-- 图种子: seed ∈ {42, 99, 200}（多种子对比图拓扑影响）
+- 图种子: seed=42 (通过 --seed 可生成不同拓扑)
 
 **Deadline计算公式**:
 ```
@@ -257,9 +255,7 @@ Cao_SOTA_MP/
 │   ├── generate.py
 │   ├── small/                   # 小规模调试(10节点)
 │   └── full/                    # 65节点完整实验
-│       ├── seed42/
-│       ├── seed99/
-│       └── seed200/
+│       └── seed42/
 ├── results/                     # 实验输出
 │   └── figures/
 ├── src/                         # 源码(扁平，不嵌套)
