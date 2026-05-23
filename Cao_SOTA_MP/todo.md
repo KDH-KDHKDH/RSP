@@ -31,8 +31,8 @@
 - [x] 项目状态评估报告 → docs/report/05_project_status.html
 - [x] P0-P3全面修复: Git提交, README, 文档对齐, 方差记录, 代码清理
 - [x] 简化为单种子模式: 保留 --seed 接口, 清理多seed计划
-- [ ] 种子42实验 (新高方差数据, CV=0.83)
-- [ ] 结果报告 → docs/report/06_seed42_final.html
+- [x] 种子42高方差实验 (CV=0.83) → ILP 100%, Dijkstra 75.2%, MILP 63.7%
+- [x] 结果报告 → docs/report/06_seed42_highvar.html
 
 ## 后续
 - [ ] Phase 5: 可视化优化(论文Fig.2风格)

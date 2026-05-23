@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## [2026-05-23] 高方差种子42实验 (CV=0.83) + 报告
+- ILP 100%, Dijkstra 75.2%, MILP 63.7% — ILP 优势扩大至 +24.8pp / +36.3pp
+- 方差增大效果显著: Dijkstra -8.3pp, MILP -10.1pp vs CV=0.54
+- ILP 求解时间降至 0.34s (与论文 CPLEX 0.32s 持平)
+- Dijkstra 75.2% 接近论文 60-70% (差距从 13-23pp 缩至 ~5pp)
+- docs/result/ → docs/report/ 重命名
+- 报告: docs/report/06_seed42_highvar.html
+
 ## [2026-05-23] 简化为单种子模式
 - 移除多种子实验计划 (99/200)，聚焦单种子 (seed42)
 - 保留 `--seed` 和 `--data-dir` 接口 (可随时切换种子)

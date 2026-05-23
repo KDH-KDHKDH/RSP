@@ -90,8 +90,8 @@ uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
 - [x] **二次修复**: generator.py 方差参数 0.3-0.8 → 0.5-1.2, CV中位数 0.54 → 0.83
 - [x] 数据集重新生成 (新高方差)
 - [x] P0-P3全面修复: Git, README, 文档对齐, meta.yaml方差记录, 代码清理
-- [ ] 种子42实验 (新高方差数据, CV=0.83)
-- [ ] 结果报告: `docs/report/06_seed42_final.html`
+- [x] 种子42高方差实验 (CV=0.83): ILP 100%, Dijkstra 75.2%, MILP 63.7%
+- [x] 结果报告: `docs/report/06_seed42_highvar.html`
 
 ### Phase 5: 可视化优化
 - [ ] 复现Fig.2(a): 准确率 vs α 折线图
@@ -111,7 +111,7 @@ uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
 - `03_audit_seed42.html` — 项目审计：发现数据方差问题 + 根因分析
 - `04_seed42_final.html` — 种子42最终实验 (CV=0.54, 路径匹配修复后)
 - `05_project_status.html` — 项目状态全面评估 (2026-05-23)
-- `06_seed42_final.html` — 种子42高方差实验 (CV=0.83, 待完成)
+- `06_seed42_highvar.html` — 种子42高方差实验 (CV=0.83, 2026-05-23)
 
 ## 关键决策
 
