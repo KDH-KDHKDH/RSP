@@ -1,0 +1,12 @@
+num_edges: 20
+num_nodes: 10
+num_od_pairs: 5
+num_repeats: 3
+num_samples: 50
+seed: 42
+travel_time_range:
+- 10.0
+- 100.0
+travel_time_std_ratio:
+- 0.5
+- 1.2

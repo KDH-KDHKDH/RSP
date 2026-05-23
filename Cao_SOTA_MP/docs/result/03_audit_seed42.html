@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>实验报告 03: 项目审计 & 种子42实验结果分析</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 960px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--accent); }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 1rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
+p, li { margin-bottom: 0.6rem; }
+ul, ol { padding-left: 1.5rem; }
+.meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+.highlight { background: #eff6ff; border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.bad { background: #ffebee; border-left: 4px solid #e53935; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.good { background: #e8f5e9; border-left: 4px solid #43a047; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.formula { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.5rem; margin: 1rem 0; font-family: "Courier New", monospace; font-size: 0.95rem; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.8rem; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; }
+tr:nth-child(even) { background: #f8fafc; }
+tr.bad-row { background: #ffebee; }
+tr.warn-row { background: #fff8e1; }
+tr.good-row { background: #e8f5e9; }
+.code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+img { max-width: 100%; border: 1px solid var(--border); border-radius: 4px; margin: 1em 0; }
+.comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+.comparison .card { margin: 0; }
+@media (max-width: 640px) { .comparison { grid-template-columns: 1fr; } body { padding: 1rem; } }
+</style>
+</head>
+<body>
+
+<h1>实验报告 03: 项目审计 &amp; 实验结果分析</h1>
+<div class="meta">
+    <strong>日期:</strong> 2026-05-21 | <strong>阶段:</strong> Phase 4b 审计 |
+    <strong>配置:</strong> <span class="code">configs/artificial_n500.yaml</span> | <strong>求解器:</strong> SCIP (pyscipopt 6.2.1)
+</div>
+
+<!-- ============ KEY FINDING ============ -->
+<div class="bad">
+    <strong>关键发现：实验结果的准确率与论文存在显著偏差。</strong><br>
+    我们测得的 MILP 准确率 97.8%、Dijkstra 准确率 96.9%，与论文报告的 MILP 70-80%、Dijkstra 60-70% 差距 18-37 个百分点。经审计确认，求解算法正确，根因是 <strong>数据生成的行程时间方差过低</strong>（CV 中位数仅 0.25），导致均值最短路径几乎总是最优路径。需要修复数据生成后重新实验。
+</div>
+
+<!-- ============ 实验配置 ============ -->
+<h2>1. 实验配置</h2>
+<table>
+<tr><th>参数</th><th>本实验</th><th>论文</th></tr>
+<tr><td>路网</td><td>65 节点, 123 边 (种子=42)</td><td>65 节点, 123 边</td></tr>
+<tr><td>样本数 N</td><td>500</td><td>500</td></tr>
+<tr><td>OD 对数</td><td>20</td><td>20</td></tr>
+<tr><td>重复次数</td><td>10</td><td>10</td></tr>
+<tr><td>Deadline α</td><td>[0.5, 0.6, 0.7, 0.8, 0.9]</td><td>[0.5, 0.6, 0.7, 0.8, 0.9]</td></tr>
+<tr><td>求解器</td><td>SCIP 6.2.1 (通过 PuLP)</td><td>CPLEX 12.x</td></tr>
+<tr><td>总求解次数</td><td>10×20×5×3 = 3000</td><td>10×20×5×3 = 3000</td></tr>
+<tr class="warn-row"><td>行程时间分布</td><td>对数正态, CV 中位数 0.25</td><td>未公开（论文未提供生成代码）</td></tr>
+</table>
+
+<!-- ============ ALGORITHM AUDIT ============ -->
+<h2>2. 算法实现审计</h2>
+
+<div class="card">
+<h3>2.1 审计结论：三个求解器均正确实现</h3>
+
+<p><strong>ILP 精确解 (`ilp_solver.py`)</strong>：</p>
+<div class="formula">
+min  Σᵢ ιᵢ<br>
+s.t. Σⱼ Wᵢⱼ·xⱼ − V·ιᵢ ≤ τ,  ∀i &nbsp;&nbsp;✓ 延迟指示约束<br>
+     Mx = b &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✓ 流守恒<br>
+     xⱼ ∈ {0,1}, ιᵢ ∈ {0,1} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✓ 二值变量<br>
+     Big-M = 1×10⁶
+</div>
+
+<p><strong>MILP 近似 (`milp_solver.py`)</strong>：ℓ₁-范数松弛，用连续变量 pᵢ ≥ 0 替代二值 ιᵢ ✓</p>
+
+<p><strong>Dijkstra 基线 (`dijkstra_solver.py`)</strong>：以均值 w̄ⱼ = ΣᵢWᵢⱼ/N 为边权重求最短路径 ✓</p>
+
+<p><strong>准确率指标 (`experiment.py:138`)</strong>：比较非 ILP 方法的实际迟到次数与 ILP 最优迟到次数是否一致 ✓
+<br>（迟到次数相同 ⟺ 路径同样是全局最优 ⟺ 概率精确匹配）</p>
+</div>
+
+<!-- ============ EXPERIMENTAL RESULTS ============ -->
+<h2>3. 实验结果 vs 论文对比</h2>
+
+<h3>3.1 总体准确率</h3>
+<table>
+<tr><th>方法</th><th>论文报告</th><th>本实验 (种子42)</th><th style="color:#e53935;">偏差</th></tr>
+<tr><td><strong>ILP</strong></td><td>100%</td><td>100%</td><td class="good">0pp ✓</td></tr>
+<tr class="bad-row"><td><strong>MILP</strong></td><td>70% ~ 80%</td><td>97.8%</td><td style="color:#e53935;"><strong>+18~28pp ✗</strong></td></tr>
+<tr class="bad-row"><td><strong>Dijkstra</strong></td><td>60% ~ 70%</td><td>96.9%</td><td style="color:#e53935;"><strong>+27~37pp ✗</strong></td></tr>
+</table>
+
+<div class="warn">
+<strong>这意味着什么？</strong>在论文的实验中，Dijkstra 有 30-40% 的概率找错最优路径；而在我们的实验中，Dijkstra 只有 3% 的概率找错。问题实例的难度相差了一个数量级。
+</div>
+
+<h3>3.2 分 α 准确率</h3>
+<table>
+<tr><th rowspan="2">α</th><th colspan="2">MILP</th><th colspan="2">Dijkstra</th></tr>
+<tr><th>论文</th><th>本实验</th><th>论文</th><th>本实验</th></tr>
+<tr><td>0.5</td><td>~65-70%</td><td class="bad-row">97.5% (+28pp)</td><td>~55-60%</td><td class="bad-row">99.0% (+40pp)</td></tr>
+<tr><td>0.6</td><td>~70-75%</td><td class="bad-row">98.5% (+24pp)</td><td>~60-65%</td><td class="bad-row">97.0% (+33pp)</td></tr>
+<tr><td>0.7</td><td>~75-80%</td><td class="bad-row">99.0% (+20pp)</td><td>~65-70%</td><td class="bad-row">97.0% (+28pp)</td></tr>
+<tr><td>0.8</td><td>~75-80%</td><td class="bad-row">97.5% (+18pp)</td><td>~65-70%</td><td class="bad-row">96.5% (+27pp)</td></tr>
+<tr><td>0.9</td><td>~75-80%</td><td class="bad-row">96.5% (+17pp)</td><td>~65-70%</td><td class="bad-row">95.0% (+26pp)</td></tr>
+</table>
+
+<h3>3.3 准确率趋势对比 (α)</h3>
+<table>
+<tr><th></th><th>论文 Fig.2(a)</th><th>本实验</th></tr>
+<tr class="bad-row"><td>趋势方向</td><td><strong>α↑ → 准确率↑</strong> (紧 deadline 更难)</td><td><strong>α↑ → 准确率↓</strong> (松 deadline 更难)</td></tr>
+<tr><td>Dijkstra α=0.5</td><td>最低 (~60%)</td><td>最高 (99.0%)</td></tr>
+<tr><td>Dijkstra α=0.9</td><td>最高 (~75%)</td><td>最低 (95.0%)</td></tr>
+</table>
+
+<div class="bad">
+<strong>趋势完全颠倒。</strong>论文中紧 deadline（α=0.5）是最难的场景，因为只有少数路径能满足紧 deadline，需要精确建模。而我们的实验中紧 deadline 反而是最容易的——因为方差小，几乎所有场景下均值路径都足够好。
+</div>
+
+<h3>3.4 求解时间</h3>
+<table>
+<tr><th>方法</th><th>均值</th><th>最大值</th><th>论文 (CPLEX)</th></tr>
+<tr><td>ILP (SCIP)</td><td>0.772s</td><td>34.25s</td><td>0.322s</td></tr>
+<tr><td>MILP (SCIP)</td><td>0.133s</td><td>1.22s</td><td>0.329s</td></tr>
+<tr><td>Dijkstra</td><td>0.0003s</td><td>0.001s</td><td>0.003s</td></tr>
+</table>
+<p>SCIP 比论文使用的 CPLEX 慢 2-3 倍，但作为开源替代可接受。</p>
+
+<h3>3.5 准时概率</h3>
+<table>
+<tr><th>α</th><th>ILP</th><th>MILP</th><th>Dijkstra</th><th>MILP − ILP</th><th>Dijk − ILP</th></tr>
+<tr><td>0.5</td><td>0.768</td><td>0.767</td><td>0.768</td><td>-0.001</td><td>0.000</td></tr>
+<tr><td>0.6</td><td>0.890</td><td>0.890</td><td>0.889</td><td>0.000</td><td>-0.001</td></tr>
+<tr><td>0.7</td><td>0.954</td><td>0.954</td><td>0.953</td><td>0.000</td><td>-0.001</td></tr>
+<tr><td>0.8</td><td>0.983</td><td>0.983</td><td>0.982</td><td>0.000</td><td>-0.001</td></tr>
+<tr><td>0.9</td><td>0.994</td><td>0.994</td><td>0.994</td><td>0.000</td><td>-0.001</td></tr>
+</table>
+<div class="highlight">
+<strong>准时概率差距极小</strong>（< 0.001），远小于论文报告的 0.02-0.05。进一步验证了数据方差过小导致问题"退化"。
+</div>
+
+<!-- ============ ROOT CAUSE ============ -->
+<h2>4. 根因分析：数据方差过低</h2>
+
+<div class="card">
+<h3>4.1 行程时间生成分析</h3>
+<p>当前数据生成 (<span class="code">src/generator.py:35</span>) 为每条边使用对数正态分布：</p>
+<ul>
+    <li>均值: <span class="code">Uniform(10, 100)</span></li>
+    <li>标准差: 均值 × <span class="code">Uniform(0.1, 0.4)</span></li>
+    <li><strong>变异系数 (CV) 中位数: 0.25</strong></li>
+    <li>CV 四分位距: [0.19, 0.33]</li>
+    <li>CV 最大值: 0.41</li>
+</ul>
+
+<p>这意味着：一条平均通行时间 50 秒的路段，其标准差仅 5-20 秒。大多数情况下，实际通行时间非常接近均值。</p>
+</div>
+
+<div class="card">
+<h3>4.2 为什么会"退化"？</h3>
+<p>准时问题的核心挑战是：<strong>均值最短路径 ≠ 准时概率最高路径</strong>。这需要行程时间有足够的波动性。</p>
+
+<p>打个比方：</p>
+<ul>
+    <li>路径 A：平均 45min，但波动大（30~90min）</li>
+    <li>路径 B：平均 50min，但波动小（40~60min）</li>
+</ul>
+<p>如果 deadline 是 55min，路径 B 虽然慢但也更稳定，准时概率可能更高。Dijkstra 会选 A（均值小），但 A 不是最优。</p>
+<p>如果方差很小，路径 A 和 B 的波动都很小，那均值最短路径（Dijkstra）几乎等价于最优路径。</p>
+</div>
+
+<div class="warn">
+<strong>当前 CV 设定的问题是：</strong>即使是最宽松的 CV=0.4 也只产生 40% 的相对波动，不足以制造"均值路径非最优"的困难场景。论文的实验设定虽然未公开，但从结果（Dijkstra 仅 60-70% 准确率）反推，其行程时间波动应该显著更大。
+</div>
+
+<!-- ============ FIXES ============ -->
+<h2>5. 修复方案</h2>
+
+<div class="good">
+<strong>核心修复：增大行程时间方差。</strong>
+
+<h3>方案：扩大 CV 范围</h3>
+<p>将 <span class="code">generator.py</span> 的方差参数从 <span class="code">Uniform(0.1, 0.4)</span> 改为 <span class="code">Uniform(0.3, 0.8)</span>，使 CV 中位数从 0.25 提升到约 0.55：</p>
+<table>
+<tr><th></th><th>当前</th><th>修复后</th></tr>
+<tr><td>std/mean 范围</td><td>0.1 ~ 0.4</td><td>0.3 ~ 0.8</td></tr>
+<tr><td>CV 中位数（预期）</td><td>0.25</td><td>~0.55</td></tr>
+<tr><td>每条边波动等级</td><td>轻微</td><td>中等到显著</td></tr>
+</table>
+
+<p>修复后需要：</p>
+<ol>
+    <li>重新生成 3 个种子 (42/99/200) 的数据</li>
+    <li>重新跑 3 个种子实验</li>
+    <li>验证 Dijkstra 准确率降至 60-70%、MILP 降至 70-80% 范围</li>
+    <li>验证准确率 vs α 趋势恢复为递增（与论文一致）</li>
+</ol>
+</div>
+
+<!-- ============ FIGURES ============ -->
+<h2>6. 图表 (种子42, 当前数据)</h2>
+
+<h3>6.1 准确率 vs Deadline Level</h3>
+<img src="../../results/seed42/figures/paper_fig2a_accuracy.png" alt="Accuracy vs Alpha">
+
+<h3>6.2 准时概率散点图：ILP vs Dijkstra / MILP</h3>
+<img src="../../results/seed42/figures/paper_fig2bc_scatter.png" alt="ILP vs Method Scatter">
+
+<h3>6.3 迟到次数分布</h3>
+<img src="../../results/seed42/figures/lateness_distribution.png" alt="Lateness Distribution">
+
+<!-- ============ SOLVER NOTE ============ -->
+<h2>7. 补充：求解器选型说明</h2>
+
+<div class="card">
+<h3>HiGHS → SCIP 迁移</h3>
+<p>原计划使用 HiGHS 求解器（highspy 1.14.0，比 CBC 快 4.8 倍），但在多种子测试中发现严重的堆内存损坏 bug（<code>double free</code> / <code>malloc(): invalid next size</code>）。该 bug 确定性地在某些数据实例上触发，即使在完全隔离的子进程中也无法规避。</p>
+<p>已迁移到 <strong>SCIP</strong> (pyscipopt 6.2.1)，通过 PuLP 的 <code>SCIP_PY</code> 接口调用。SCIP 是学术界公认的顶级开源 MIP 求解器，比 CBC 快 2.7 倍，稳定可靠。论文原用 CPLEX，SCIP 是最接近的开源替代。</p>
+</div>
+
+<!-- ============ CONCLUSION ============ -->
+<h2>8. 结论</h2>
+
+<div class="highlight">
+<strong>算法实现（ILP / MILP / Dijkstra）：✓ 正确，与论文一致</strong><br>
+<strong>准确率指标：✓ 正确，迟到次数匹配 = 路径最优性</strong><br>
+<strong>数据生成：✗ 行程时间方差过低，导致问题实例"退化"</strong><br>
+<strong>求解器：✓ SCIP 稳定可靠，性能可接受</strong><br><br>
+
+<strong>下一步：</strong>修复数据生成（扩大 CV），重新生成数据集，重新跑 3 种子实验，验证结果与论文可比后再出最终报告。
+</div>
+
+</body>
+</html>

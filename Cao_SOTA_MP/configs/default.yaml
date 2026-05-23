@@ -1,0 +1,19 @@
+# Default config: small network for quick validation
+# Uses pre-generated data from data/small/
+data:
+  dir: data/small
+  num_samples: 50
+
+experiment:
+  num_repeats: 3
+  alphas: [0.5, 0.7, 0.9]
+
+solver:
+  backend: CBC
+  big_m: 1000000
+  time_limit: 60
+
+output:
+  dir: results/
+  save_figures: true
+  save_csv: true

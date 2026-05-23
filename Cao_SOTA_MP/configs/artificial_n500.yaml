@@ -1,0 +1,22 @@
+# Full artificial network experiment (65 nodes, N=500)
+# Use --data-dir to switch between seeds:
+#   uv run python run.py --data-dir data/full/seed42
+#   uv run python run.py --data-dir data/full/seed99
+#   uv run python run.py --data-dir data/full/seed200
+data:
+  dir: data/full/seed42
+  num_samples: 500
+
+experiment:
+  num_repeats: 10
+  alphas: [0.5, 0.6, 0.7, 0.8, 0.9]
+
+solver:
+  backend: SCIP
+  big_m: 1000000
+  time_limit: 60
+
+output:
+  dir: results/
+  save_figures: true
+  save_csv: true

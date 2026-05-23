@@ -1,0 +1,21 @@
+[project]
+name = "rsp"
+version = "0.1.0"
+description = "Reliable Shortest Path - Research Project"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "networkx>=3.1",
+    "pulp>=2.7",
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+    "pyyaml>=6.0",
+    "highspy>=1.14.0",
+    "pyscipopt>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4",
+]
