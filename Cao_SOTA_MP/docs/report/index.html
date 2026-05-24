@@ -33,7 +33,20 @@ a:hover { text-decoration: underline; }
 <body>
 
 <h1>实验报告索引</h1>
-<div class="subtitle">Cao et al. (2020) ILP 精确解复现项目 | 共 17 份报告</div>
+<div class="subtitle">Cao et al. (2020) ILP 精确解复现项目 | 共 18 份报告</div>
+
+<!-- ===== Metric Policy ===== -->
+<h2>Metric Policy — 主准确率切换</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>18</td>
+  <td><a href="18_metric_policy_rollout.html">18_metric_policy_rollout.html</a></td>
+  <td>2026-05-24</td>
+  <td><span class="tag tag-phase8">指标</span></td>
+  <td>Metric Policy 实施: 主准确率切换为 tie-aware, 路径匹配降为辅助, 严格阈值 (0.5/N) 敏感性验证</td>
+</tr>
+</table>
 
 <!-- ===== 1000-Job Validation ===== -->
 <h2>1000-Job 大规模验证</h2>
@@ -289,6 +302,15 @@ a:hover { text-decoration: underline; }
   <td><strong>0.37s</strong></td>
   <td><strong>0.83</strong></td>
   <td><strong>1000-job实验, 与报告09一致, 3000/3000 Optimal</strong></td>
+</tr>
+<tr>
+  <td><a href="18_metric_policy_rollout.html">18</a></td>
+  <td><strong>100%</strong></td>
+  <td><strong>88.3%</strong></td>
+  <td><strong>90.2%</strong></td>
+  <td><strong>0.37s</strong></td>
+  <td><strong>0.83</strong></td>
+  <td><strong>Metric Policy: tie-aware 主指标, 0.5/N 阈值无增量区分</strong></td>
 </tr>
 </table>
 

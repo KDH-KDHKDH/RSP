@@ -1,5 +1,22 @@
 # 变更日志 (Changelog)
 
+## [2026-05-24] 报告 18: Metric Policy 审计与阈值敏感性结论
+- 基于 full/seed42 + SCIP 的 Metric Policy 变更后重跑完成 (1000 jobs, ILP 100% Optimal)
+- 主准确率 (tie-aware, |gap| ≤ 1/N): MILP 90.2%, Dijkstra 88.3%
+- 严格阈值 (|gap| ≤ 0.5/N): 与主阈值完全一致——因准时概率差为 1/N 整数倍，gap 不可能落在 (0.5/N, 1/N) 内
+- 结论：0.5/N 严格阈值在 N=500 下无增量信息，保留为代码中的可选诊断开关，不作为常规指标
+- 修复 experiment.py 中 MILP/Dijkstra 行缺少 `tie_aware_correct_strict` 字段的 bug
+- 结果与报告 09/15/16/17 完全一致，验证 seeded generation 确定性
+- 报告索引更新至 18 份
+
+## [2026-05-24] Metric Policy 实现：主准确率切换 + 阈值敏感性
+- **主准确率切换**: `print_summary()` / `plot_accuracy_vs_deadline()` / `save_compute_time_table()` 默认展示 tie-aware accuracy 作为主指标，path-match 降为辅助
+- **阈值敏感性**: `run_experiment()` 新增 `tie_aware_correct_strict` 列 (`|gap| ≤ 0.5/N`)，与默认 `1/N` 阈值并列输出
+- `accuracy_vs_deadline.png` 现为主 tie-aware 图表，新增 `tie_aware_strict_accuracy_vs_deadline.png` 和 `path_match_accuracy_vs_deadline.png`
+- Notebook `experiment.ipynb` 所有表格/图表同步切换，新增严格阈值对比
+- README 结果表列顺序调整 (Tie-Aware 在前)，spec.md 文档化双阈值规则
+- plan.md / todo.md 标记 metric policy 三项任务完成
+
 ## [2026-05-24] 维护文档更新：主准确率与 tie-aware 规则计划
 - README / plan / todo / spec / handover 同步记录后续评估口径：将 tie-aware accuracy 作为主准确率，路径匹配降为辅助结构诊断
 - 明确当前默认容忍规则继续使用 `|gap| ≤ 1/N`

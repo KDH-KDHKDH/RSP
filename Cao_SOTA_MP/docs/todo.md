@@ -58,9 +58,9 @@ Phase 1-9 全部完成。论文协议对齐和 notebook-first 入口已完成，
 - [x] **论文协议对齐：deadline 严格模式** — 小图/审计模式下支持枚举所有路径计算 `τ`
 - [x] **论文协议对齐：ILP 非最优样本完整记账** — 不再跳过 `status != Optimal` 的 job
 - [x] **Notebook-first 入口对齐** — `experiment.ipynb` 配置区暴露 `deadline.mode` 与审计开关
-- [ ] **主准确率切换** — summary / README / notebook / 图表 默认以 `tie_aware_accuracy` 作为主准确率展示
-- [ ] **路径匹配降级为辅助指标** — 保留 `path_match`，但移动到诊断区或次级表格
-- [ ] **阈值敏感性实验** — 比较 `|gap| ≤ 1/N` 与一个统一更严格阈值（如 `0.5/N`）对排名和结论的影响
+- [x] **主准确率切换** — summary / README / notebook / 图表 默认以 `tie_aware_accuracy` 作为主准确率展示
+- [x] **路径匹配降级为辅助指标** — 保留 `path_match`，但移动到诊断区或次级表格
+- [x] **阈值敏感性实验** — 比较 `|gap| ≤ 1/N` 与 `|gap| ≤ 0.5/N` 对排名和结论的影响
 
 ### 中优先级
 

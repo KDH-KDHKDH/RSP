@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-24
 **Status:** Phase 1-9 complete. ILP 100% exact solution reproduced on both networks. All pending experiments done.
-**Tests:** 10/10 passing.
+**Tests:** 14/14 passing.
 **Previous handover:** 001 (2026-05-23) — Beijing high-CV was pending then; now complete.
 
 ---
@@ -17,7 +17,7 @@ Reproduction of **Cao et al. (2020)** — "Finding the Shortest Path with Maximu
 
 | Phase | Status | Key Result |
 |-------|--------|------------|
-| Phase 1–2: Core implementation | Done | ILP, MILP, Dijkstra solvers; 10/10 tests |
+| Phase 1–2: Core implementation | Done | ILP, MILP, Dijkstra solvers; 14/14 tests |
 | Phase 3: 65-node N=100 | Done | Initial verification |
 | Phase 4: N=500 + SCIP | Done | HiGHS abandoned (memory bug), SCIP adopted |
 | Phase 4b: Variance fix round 2 | Done | CV 0.25→0.54→0.83; fixed by adjusting std/mean ranges |

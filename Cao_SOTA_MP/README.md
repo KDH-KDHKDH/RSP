@@ -37,21 +37,21 @@ All solvers take `(network, W, origin, destination, tau)` and return `{path_x, l
 
 ### Artificial Network (65 nodes, 123 edges, CV=0.83, seed=42)
 
-| Method | Path-Match Accuracy | Tie-Aware Accuracy | Solve Time (mean) |
+| Method | Tie-Aware Accuracy | Path-Match Accuracy | Solve Time (mean) |
 |--------|--------------------|--------------------|--------------------|
 | ILP | **100.0%** | **100.0%** | 0.33s |
-| Dijkstra | 75.2% | 88.3% | 0.0003s |
-| MILP | 63.7% | 90.2% | 0.17s |
+| Dijkstra | 88.3% | 75.2% | 0.0003s |
+| MILP | 90.2% | 63.7% | 0.17s |
 
 ### Beijing OSM Network (587 nodes, 1066 edges, CV=0.775, 3 repeats)
 
-| Method | Path-Match Accuracy | Tie-Aware Accuracy | Solve Time (mean) |
+| Method | Tie-Aware Accuracy | Path-Match Accuracy | Solve Time (mean) |
 |--------|--------------------|--------------------|--------------------|
 | ILP | **100.0%** | **100.0%** | 23.3s |
-| Dijkstra | 71.1% | 90.0% | 0.004s |
-| MILP | 68.9% | 88.9% | 7.7s |
+| Dijkstra | 90.0% | 71.1% | 0.004s |
+| MILP | 88.9% | 68.9% | 7.7s |
 
-ILP = 100% accuracy reproduced. Tie-aware accuracy shows baselines closer to optimal than strict path-matching suggests (objective_gap < 0.001 in both networks). Current maintenance direction is to use tie-aware accuracy as the primary comparison metric and keep path-match as a secondary structural diagnostic.
+ILP = 100% accuracy reproduced. Tie-aware accuracy (|gap| ≤ 1/N) is the primary comparison metric; path-match accuracy is retained as a secondary structural diagnostic. A strict threshold variant (|gap| ≤ 0.5/N) is also computed for sensitivity analysis.
 For the latest results in this repo, start with report 09 (artificial network) and report 12 (Beijing high-CV).
 
 ## Project Structure

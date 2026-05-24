@@ -144,17 +144,23 @@ def run_experiment(config: dict, data_dir: str | Path | None = None,
                 if reference_available:
                     ilp_gap = 0.0
                     ilp_tie_ok = True
+                    ilp_tie_strict_ok = True
                     gap_milp = ilp_prob - milp_prob if not np.isnan(milp_prob) else np.nan
                     milp_tie_ok = abs(gap_milp) <= 1.0 / N if not np.isnan(gap_milp) else np.nan
+                    milp_tie_strict_ok = abs(gap_milp) <= 0.5 / N if not np.isnan(gap_milp) else np.nan
                     gap_dij = ilp_prob - dij_prob if not np.isnan(dij_prob) else np.nan
                     dij_tie_ok = abs(gap_dij) <= 1.0 / N if not np.isnan(gap_dij) else np.nan
+                    dij_tie_strict_ok = abs(gap_dij) <= 0.5 / N if not np.isnan(gap_dij) else np.nan
                 else:
                     ilp_gap = np.nan
                     ilp_tie_ok = np.nan
+                    ilp_tie_strict_ok = np.nan
                     gap_milp = np.nan
                     milp_tie_ok = np.nan
+                    milp_tie_strict_ok = np.nan
                     gap_dij = np.nan
                     dij_tie_ok = np.nan
+                    dij_tie_strict_ok = np.nan
 
                 milp_stats = _compute_path_stats(W, milp_path, tau)
                 dij_stats = _compute_path_stats(W, dij_path, tau)
@@ -166,6 +172,7 @@ def run_experiment(config: dict, data_dir: str | Path | None = None,
                     "correct": True if reference_available else np.nan,
                     "objective_gap": ilp_gap,
                     "tie_aware_correct": ilp_tie_ok,
+                    "tie_aware_correct_strict": ilp_tie_strict_ok,
                     "late_count": ilp_stats["late_count"],
                     "delay_sum": ilp_stats["delay_sum"],
                     "max_delay": ilp_stats["max_delay"],
@@ -184,6 +191,7 @@ def run_experiment(config: dict, data_dir: str | Path | None = None,
                     "correct": _path_match(milp_path, ilp_path) if reference_available else np.nan,
                     "objective_gap": gap_milp,
                     "tie_aware_correct": milp_tie_ok,
+                    "tie_aware_correct_strict": milp_tie_strict_ok,
                     "late_count": milp_stats["late_count"],
                     "delay_sum": milp_stats["delay_sum"],
                     "max_delay": milp_stats["max_delay"],
@@ -202,6 +210,7 @@ def run_experiment(config: dict, data_dir: str | Path | None = None,
                     "correct": _path_match(dij_path, ilp_path) if reference_available else np.nan,
                     "objective_gap": gap_dij,
                     "tie_aware_correct": dij_tie_ok,
+                    "tie_aware_correct_strict": dij_tie_strict_ok,
                     "late_count": dij_stats["late_count"],
                     "delay_sum": dij_stats["delay_sum"],
                     "max_delay": dij_stats["max_delay"],

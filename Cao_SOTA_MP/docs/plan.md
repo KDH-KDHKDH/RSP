@@ -92,9 +92,9 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 - [x] Notebook 作为优先运行入口，配置项覆盖上述协议开关，并复用 `run_experiment()`
 
 ### Expansion
-- [ ] 评估口径切换：以 tie-aware accuracy 作为主准确率，path-match 降为辅助诊断
-- [ ] 图表切换：accuracy 曲线和总表默认展示 tie-aware accuracy，path-match 作为附图/附表
-- [ ] tie-aware 阈值敏感性分析：保留 `|gap| ≤ 1/N` 作为主标准，补充一个统一更严格阈值（如 `0.5/N`）对比
+- [x] 评估口径切换：以 tie-aware accuracy 作为主准确率，path-match 降为辅助诊断
+- [x] 图表切换：accuracy 曲线和总表默认展示 tie-aware accuracy，path-match 作为附图/附表
+- [x] tie-aware 阈值敏感性分析：保留 `|gap| ≤ 1/N` 作为主标准，补充 `|gap| ≤ 0.5/N` 严格阈值对比
 - [ ] 多 seed 统计显著性实验
 - [ ] 真实轨迹数据接入（如 T-Drive）
 
