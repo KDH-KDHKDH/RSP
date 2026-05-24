@@ -61,13 +61,13 @@ Phase 1-9 全部完成。主评估口径和 gap 阈值已定，当前进入新�
 - [x] **主准确率切换** — summary / README / notebook / 图表 默认以 `tie_aware_accuracy` 作为主准确率展示
 - [x] **路径匹配降级为辅助指标** — 保留 `path_match`，但移动到诊断区或次级表格
 - [x] **gap 阈值策略定稿** — 默认固定 `|gap| ≤ 1/N`，不再继续复杂化
-- [ ] **清理 strict 相关代码与产物** — 清理 `tie_aware_accuracy_strict`、strict 图表、strict 汇总列
-- [ ] **新人工图 seed 524 方案** — 引入新的冲突型人工图实验族，不替代 `seed42`
-- [ ] **双峰边类型参数** —  
+- [x] **清理 strict 相关代码与产物** — 清理 `tie_aware_accuracy_strict`、strict 图表、strict 汇总列
+- [x] **新人工图 seed 524 方案** — 引入新的冲突型人工图实验族，不替代 `seed42`
+- [x] **双峰边类型参数** —  
   `fast_risky`: `mean ~ U(10, 50)`, `cv ~ U(0.8, 1.4)`  
   `slow_stable`: `mean ~ U(40, 90)`, `cv ~ U(0.2, 0.6)`
-- [ ] **冲突结构检查** — 审计新图是否真的形成“快但险 vs 慢但稳”的可替代路径
-- [ ] **新人工图实验报告** — 跑 `seed524` 单组实验，比较 ILP / MILP / Dijkstra 的分离度与 gap 结构
+- [x] **冲突结构检查** — 审计新图是否真的形成”快但险 vs 慢但稳”的可替代路径
+- [x] **新人工图实验报告** — 跑 `seed524` 单组实验，比较 ILP / MILP / Dijkstra 的分离度与 gap 结构
 
 ### 中优先级
 

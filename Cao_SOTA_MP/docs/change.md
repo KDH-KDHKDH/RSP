@@ -1,5 +1,27 @@
 # 变更日志 (Changelog)
 
+## [2026-05-24] 报告 19: 冲突图实验完成 — MILP ℓ₁ 松弛在双峰边类型图上优势显著
+
+- **实验完成**: seed524 冲突图 1000 jobs, ILP 100% Optimal, 全部求解成功
+- **MILP tie-aware 91.2%** (vs Dijkstra 87.3%), MILP 在 tie-aware 指标上持续领先
+- **MILP 路径匹配准确率跃升 +11.6pp** (63.7% → 75.3%) — 双峰风险结构使 ℓ₁ 松弛更频繁恢复 ILP 最优路径
+- **Dijkstra 路径匹配优势大幅缩小**: 从 +11.5pp 降至 +2.9pp
+- **冲突图创造了更难实例**: α=0.5 时 ILP 最低准时率 63.2% (vs seed42 的 76.8%)
+- **ILP 求解时间下降 36%** (0.37s → 0.24s) — 结构化的冲突图使分支定界更高效
+- **MILP ≥ Dijkstra 在 93.9% 的 job 上** — MILP 在冲突图中全面占优
+- 报告索引更新至 19 份
+
+## [2026-05-24] Conflict Graph: 数据生成 + 结构审计 + strict 代码清理
+
+- **Strict threshold cleanup**: 从 `experiment.py` / `visualize.py` / `experiment.ipynb` 移除所有 `tie_aware_correct_strict` (0.5/N) 代码和图表。14 个测试通过。
+- **Dual edge type graph (seed 524)**: 
+  - `src/generator.py`: 新增 `assign_conflict_edge_types()` (一次性分配边类型) 和 `generate_conflict_travel_times()` (基于预设边类型生成对数正态旅行时间)
+  - `src/graph.py`: `save()`/`load()` 支持 `edge_type` 序列化 (code+name 编码)
+  - `data/generate.py`: 新增 `--preset conflict` (65 节点, 123 边, 500 样本, 10 重复)
+- **Conflict audit results**: 61 fast_risky (CV 0.76-1.84, mean 10-49), 62 slow_stable (CV 0.20-0.64, mean 39-89)。CV 无重叠，11/20 OD 对有冲突型路径。
+- `experiment.ipynb` 配置更新：DATA_DIR = `data/full/seed524`, OUTPUT_DIR = `results/conflict_seed524_scip/`
+- 待用户运行 notebook 后进行结果审计并生成报告 19
+
 ## [2026-05-24] 报告 18: Metric Policy 审计与阈值敏感性结论
 - 基于 full/seed42 + SCIP 的 Metric Policy 变更后重跑完成 (1000 jobs, ILP 100% Optimal)
 - 主准确率 (tie-aware, |gap| ≤ 1/N): MILP 90.2%, Dijkstra 88.3%
