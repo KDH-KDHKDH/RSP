@@ -51,7 +51,7 @@ All solvers take `(network, W, origin, destination, tau)` and return `{path_x, l
 | Dijkstra | 90.0% | 71.1% | 0.004s |
 | MILP | 88.9% | 68.9% | 7.7s |
 
-ILP = 100% accuracy reproduced. Tie-aware accuracy (|gap| ≤ 1/N) is the primary comparison metric; path-match accuracy is retained as a secondary structural diagnostic. A strict threshold variant (|gap| ≤ 0.5/N) is also computed for sensitivity analysis.
+ILP = 100% accuracy reproduced. Tie-aware accuracy (|gap| ≤ 1/N) is the primary comparison metric; path-match accuracy is retained as a secondary structural diagnostic.
 For the latest results in this repo, start with report 09 (artificial network) and report 12 (Beijing high-CV).
 
 ## Project Structure

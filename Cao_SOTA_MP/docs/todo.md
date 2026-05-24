@@ -1,8 +1,8 @@
 # TODO — 当前待办
 
-## 当前阶段: Metric Policy + Expansion
+## 当前阶段: Conflict-Graph Planning
 
-Phase 1-9 全部完成。论文协议对齐和 notebook-first 入口已完成，当前先切换主评估口径，再做扩展型实验。
+Phase 1-9 全部完成。主评估口径和 gap 阈值已定，当前进入新人工图实验族的规划与审计阶段。
 
 ## 重要文件路径
 
@@ -60,15 +60,20 @@ Phase 1-9 全部完成。论文协议对齐和 notebook-first 入口已完成，
 - [x] **Notebook-first 入口对齐** — `experiment.ipynb` 配置区暴露 `deadline.mode` 与审计开关
 - [x] **主准确率切换** — summary / README / notebook / 图表 默认以 `tie_aware_accuracy` 作为主准确率展示
 - [x] **路径匹配降级为辅助指标** — 保留 `path_match`，但移动到诊断区或次级表格
-- [x] **阈值敏感性实验** — 比较 `|gap| ≤ 1/N` 与 `|gap| ≤ 0.5/N` 对排名和结论的影响
+- [x] **gap 阈值策略定稿** — 默认固定 `|gap| ≤ 1/N`，不再继续复杂化
+- [ ] **清理 strict 相关代码与产物** — 清理 `tie_aware_accuracy_strict`、strict 图表、strict 汇总列
+- [ ] **新人工图 seed 524 方案** — 引入新的冲突型人工图实验族，不替代 `seed42`
+- [ ] **双峰边类型参数** —  
+  `fast_risky`: `mean ~ U(10, 50)`, `cv ~ U(0.8, 1.4)`  
+  `slow_stable`: `mean ~ U(40, 90)`, `cv ~ U(0.2, 0.6)`
+- [ ] **冲突结构检查** — 审计新图是否真的形成“快但险 vs 慢但稳”的可替代路径
+- [ ] **新人工图实验报告** — 跑 `seed524` 单组实验，比较 ILP / MILP / Dijkstra 的分离度与 gap 结构
 
 ### 中优先级
 
 - [x] **Candidate path / deadline 单元测试**: 已为 `generate_candidate_paths()` 和 `compute_deadline()` 增加回归测试
 
 - [x] **PuLP 4.0 warning workaround**: 已切到本地兼容 helper，消除 `LpVariable(...)` deprecation warning
-
-- [ ] **多 seed 统计显著性实验**：在协议对齐后重跑人工路网，输出均值/方差
 
 ### 低优先级
 

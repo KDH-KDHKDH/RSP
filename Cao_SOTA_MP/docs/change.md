@@ -17,11 +17,11 @@
 - README 结果表列顺序调整 (Tie-Aware 在前)，spec.md 文档化双阈值规则
 - plan.md / todo.md 标记 metric policy 三项任务完成
 
-## [2026-05-24] 维护文档更新：主准确率与 tie-aware 规则计划
+## [2026-05-24] 维护文档更新：主准确率、固定阈值与新人工图方向
 - README / plan / todo / spec / handover 同步记录后续评估口径：将 tie-aware accuracy 作为主准确率，路径匹配降为辅助结构诊断
 - 明确当前默认容忍规则继续使用 `|gap| ≤ 1/N`
-- 明确“直接随意缩小一点余量”不作为默认方案；阈值策略保持简单，优先只比较 `1/N` 和一个统一更严格阈值
-- 将后续待办拆分为：主图切换、阈值敏感性实验、多 seed 扩展
+- 明确“直接随意缩小一点余量”不作为默认方案；阈值策略保持简单，不再继续复杂化
+- 将后续待办收敛为：清理 strict 代码与产物、新人工图实验族、真实轨迹扩展
 
 ## [2026-05-24] Full Seed42 详细复盘报告 16
 - 基于 `results/full_protocol_seed42_scip/` 的 notebook rerun 输出，新增详细复盘报告 `docs/report/16_full_seed42_detailed_review.html`

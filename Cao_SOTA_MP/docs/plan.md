@@ -8,7 +8,7 @@
 
 Phase 1-9 全部完成。ILP=100% 精确解已复现。10/10测试通过。两个路网验证完成（人工65节点 + 北京587节点）。
 
-**待推进:** 评估口径切换（tie-aware 主准确率）、多 seed 统计显著性实验与真实轨迹扩展。论文协议对齐和 notebook-first 入口已落地。
+**待推进:** 新人工图实验族与真实轨迹扩展。主评估口径与 gap 阈值策略已定：tie-aware 为主，阈值固定 `1/N`。
 
 ## 工作流程
 
@@ -94,8 +94,11 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 ### Expansion
 - [x] 评估口径切换：以 tie-aware accuracy 作为主准确率，path-match 降为辅助诊断
 - [x] 图表切换：accuracy 曲线和总表默认展示 tie-aware accuracy，path-match 作为附图/附表
-- [x] tie-aware 阈值敏感性分析：保留 `|gap| ≤ 1/N` 作为主标准，补充 `|gap| ≤ 0.5/N` 严格阈值对比
-- [ ] 多 seed 统计显著性实验
+- [x] tie-aware 阈值策略定稿：固定使用 `|gap| ≤ 1/N`，不再继续复杂化
+- [ ] 清理 `tie_aware_accuracy_strict` 相关代码与输出产物
+- [ ] 新人工图实验族：使用 `seed=524`，不替代当前 `seed42`
+- [ ] 新人工图参数落地：`fast_risky` / `slow_stable` 双峰边类型
+- [ ] 新人工图冲突审计：验证是否形成“快但险 vs 慢但稳”的路径竞争
 - [ ] 真实轨迹数据接入（如 T-Drive）
 
 ## 报告命名规则

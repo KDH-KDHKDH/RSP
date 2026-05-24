@@ -189,8 +189,8 @@ Open `docs/report/index.html` for a navigable index with evolution table.
 
 ### Medium
 - **Metric policy update** — Use tie-aware as the default accuracy headline in summaries and plots; keep path-match as structural diagnostic
-- **Threshold sensitivity** — Compare `1/N` with one stricter global tolerance before changing the default rule
-- **Multi-seed significance** — Only if a paper-grade statistical section is needed
+- **Strict-metric cleanup** — Remove `tie_aware_accuracy_strict` related code paths and outputs from routine maintenance
+- **Conflict-graph artificial network** — Add a new `seed524` artificial graph family with low-mean/high-CV and high-mean/low-CV edge classes
 
 ### Low
 - T-Drive real GPS trajectory data integration (optional, needs data acquisition)
