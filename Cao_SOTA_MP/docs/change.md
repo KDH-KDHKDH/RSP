@@ -1,5 +1,12 @@
 # 变更日志 (Changelog)
 
+## [2026-05-24] 维护对齐 + 元数据追溯修复
+- README / plan / todo / spec 对齐到 report 12 之后的真实状态，移除“北京高方差待跑”的过时表述
+- Beijing 数据生成元数据补全：`data/generate.py` 现在写入 `highway_cv_range`，`data/beijing/meta.yaml` 已同步补齐
+- `network_source` 统一为离线 GraphML/PBF 提取表述，避免与文档中的 `osmium` 离线流程冲突
+- 新增报告 13: `docs/report/13_maintenance_followup.html`，用于承接 report 11 中已被后续结果更新的维护/审计结论
+- 报告索引与 handover 更新，明确 report 09 / 12 为当前结果；report 07 的 MILP 抽样偏差改由后续维护报告说明，不覆写历史编号报告
+
 ## [2026-05-24] 北京高方差实验完成 + Notebook + 索引更新
 - 北京路网高方差实验 (CV=0.775) 完成: ILP 100%, Dijkstra 71.1% (-14.5pp vs CV=0.54), MILP 68.9% (-12.2pp)
 - ILP 优势在高方差下显著扩大: vs Dijkstra +28.9pp, vs MILP +31.1pp

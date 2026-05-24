@@ -154,7 +154,7 @@ tr:nth-child(even) { background: #f8fafc; }
 <div class="highlight">
     <strong>关键发现：</strong><br>
     1. 报告 07 的 MILP 78.3% 与 06/09 的 63.7% 不一致 — 因为报告 07 只用 2 repeats (180 jobs)，抽样误差导致。<br>
-    2. 报告 09 是 Phase 8 审计修复后的权威结果（3 repeats, 1000 jobs, 完整指标系统）。<br>
+    2. 报告 09 是 Phase 8 审计修复后截至当时的最新结果（3 repeats, 1000 jobs, 完整指标系统）。<br>
     3. Tie-aware 排名反转: MILP (90.2%) > Dijkstra (88.3%)，而路径匹配 MILP (63.7%) < Dijkstra (75.2%)。<br>
     4. objective_gap < 0.001 表明准时概率差异极小。<br>
     5. ILP 求解时间 0.338s — 与论文 CPLEX 0.32s 持平。
@@ -188,7 +188,7 @@ tr:nth-child(even) { background: #f8fafc; }
 <tr><td><strong>10</strong></td><td><strong>北京</strong></td><td><strong>100%</strong></td><td><strong>85.6%</strong></td><td><strong>81.1%</strong></td><td><strong>96.7%</strong></td><td><strong>95.6%</strong></td><td><strong>22.2s</strong></td><td><strong>0.54</strong></td></tr>
 </table>
 </div>
-<p>* 报告 07 的 MILP 78.3% 因只有 2 repeats (180 jobs)，误差较大。报告 09 是 3 repeats (1000 jobs) 的权威结果。</p>
+<p>* 报告 07 的 MILP 78.3% 因只有 2 repeats (180 jobs)，误差较大。报告 09 是 3 repeats (1000 jobs) 下截至当时的最新结果。</p>
 
 <!-- ============ 4. 文档审计 ============ -->
 <h2>4. 文档审计</h2>

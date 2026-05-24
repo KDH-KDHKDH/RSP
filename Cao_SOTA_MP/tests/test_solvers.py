@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import numpy as np
 import networkx as nx
 from src.graph import RoadNetwork
-from src.generator import generate_travel_times, compute_deadline
+from src.generator import compute_deadline, generate_candidate_paths, generate_travel_times
 from src.ilp_solver import solve_ilp
 from src.milp_solver import solve_milp
 from src.dijkstra_solver import solve_dijkstra
@@ -126,6 +126,54 @@ class TestSolvers:
 
         assert ilp["punctuality_prob"] >= milp["punctuality_prob"] - 1e-9
         assert ilp["punctuality_prob"] >= dij["punctuality_prob"] - 1e-9
+
+
+class TestDeadlineHeuristics:
+    def setup_method(self):
+        self.net = make_small_network()
+        self.path_a = [0, 1, 3, 4]
+        self.path_b = [0, 2, 3, 4]
+
+        # Path A is faster on average but has a worse single-sample tail.
+        self.W = np.zeros((3, self.net.num_edges))
+        self.W[:, self.net.edge_index((0, 1))] = [8.0, 7.0, 30.0]
+        self.W[:, self.net.edge_index((1, 3))] = [8.0, 7.0, 30.0]
+        self.W[:, self.net.edge_index((0, 2))] = [12.0, 13.0, 14.0]
+        self.W[:, self.net.edge_index((2, 3))] = [12.0, 13.0, 14.0]
+        self.W[:, self.net.edge_index((3, 4))] = [6.0, 6.0, 6.0]
+
+    def test_compute_deadline_uses_minimax_path(self):
+        tau, diag = compute_deadline(
+            self.W,
+            self.net,
+            0,
+            4,
+            alpha=0.5,
+            paths=[self.path_a, self.path_b],
+            return_diagnostics=True,
+        )
+
+        # Path A times: 22, 20, 66 -> max 66
+        # Path B times: 30, 32, 34 -> max 34, min 30
+        expected_tau = 30.0 + 0.5 * (34.0 - 30.0)
+        assert tau == expected_tau
+        assert diag["candidate_count"] == 2
+        assert diag["T_min"] == 30.0
+        assert diag["T_max"] == 34.0
+        assert diag["tau"] == expected_tau
+
+    def test_generate_candidate_paths_deduplicates_sources(self):
+        paths = generate_candidate_paths(
+            self.W,
+            self.net,
+            0,
+            4,
+            max_paths=10,
+            seed=42,
+        )
+
+        assert len(paths) == 2
+        assert {tuple(path) for path in paths} == {tuple(self.path_a), tuple(self.path_b)}
 
 
 if __name__ == "__main__":

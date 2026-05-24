@@ -1,8 +1,8 @@
 # TODO — 当前待办
 
-## 当前阶段: Phase 5 + Phase 9
+## 当前阶段: Post-Phase 9 Maintenance
 
-Phase 1-8 全部完成。ILP=100% 精确解已复现。待推进可视化优化和北京高方差实验。
+Phase 1-9 全部完成。ILP=100% 精确解已复现。本轮维护和可视化补强已完成，当前仅保留扩展型任务。
 
 ## 重要文件路径
 
@@ -10,7 +10,7 @@ Phase 1-8 全部完成。ILP=100% 精确解已复现。待推进可视化优化�
 |------|------|
 | `data/generate.py` | 数据生成脚本 (--preset small/full/beijing) |
 | `data/full/seed42/` | 人工路网数据集 (65节点, CV=0.83) |
-| `data/beijing/` | 北京路网数据集 (587节点, 1066边, CV=0.775, 高方差数据已生成) |
+| `data/beijing/` | 北京路网数据集 (587节点, 1066边, CV=0.775, 高方差结果已完成) |
 | `data/beijing_osm.graphml` | OSM路网拓扑 (预提取, GraphML格式) |
 | `data/small/` | 小规模调试数据集 |
 | `run.py` | 唯一实验入口 (--data-dir 切换数据) |
@@ -19,7 +19,7 @@ Phase 1-8 全部完成。ILP=100% 精确解已复现。待推进可视化优化�
 | `src/generator.py` | 数据生成逻辑 |
 | `docs/change.md` | 变更日志 |
 | `docs/report/index.html` | 报告索引页 |
-| `docs/report/` | 历史报告 (01~11) |
+| `docs/report/` | 历史报告 (01~13) |
 
 ## 已完成
 
@@ -39,29 +39,26 @@ Phase 1-8 全部完成。ILP=100% 精确解已复现。待推进可视化优化�
 - [x] 文档规范化: 明确各文档职责, todo.md 移入 docs/
 - [x] Jupyter Notebook 创建: experiment.ipynb 复现 run.py 工作流, 32 个 cell 逐节可执行
 - [x] 报告 12: 北京路网高方差实验结果分析
+- [x] 维护对齐: README / plan / todo / spec / handover 与 report 12 状态同步
+- [x] Beijing meta.yaml 补充 highway_cv_range
+- [x] 报告 13: 维护/审计跟进与任务排程
 
 ## 待做
 
 ### 高优先级
 
-- [x] **北京路网高方差实验重跑**: 数据已生成 (CV=0.775)，结果: ILP 100%, Dijkstra 71.1%, MILP 68.9% → 报告 12
+- [x] **Phase 5: 可视化优化** — 已输出升级版 Fig.2 风格图和 `compute_time_summary.csv`
 
 ### 中优先级
 
-- [ ] **Phase 5: 可视化优化** — 论文 Fig.2 风格
-  - [ ] 准确率 vs α 折线图 (已有基础版)
-  - [ ] ILP vs 其他方法准时概率散点图 (已有基础版)
-  - [ ] Table I: 计算时间对比表
+- [x] **Candidate path / deadline 单元测试**: 已为 `generate_candidate_paths()` 和 `compute_deadline()` 增加回归测试
 
-- [ ] **Report 07 MILP 数据加注**: MILP=78.3% 仅基于 2 repeats，与权威报告 09 的 63.7% 不一致。在报告 07 中加注说明抽样限制
-
-- [ ] **Beijing meta.yaml 补充 CV 范围**: 在 `data/generate.py` 中为 beijing preset 写入 `highway_cv_range` 字段
+- [x] **PuLP 4.0 warning workaround**: 已切到本地兼容 helper，消除 `LpVariable(...)` deprecation warning
 
 ### 低优先级
 
-- [ ] spec.md 验收标准北京路网部分待高方差实验后填写实际数据
 - [ ] T-Drive 真实轨迹数据集成 (可选, 需获取数据)
-- [ ] PuLP 4.0 API 迁移 (LpVariable → add_variable, 消除 100 个 deprecation warning)
+- [ ] 多 seed 统计显著性实验（在需要论文级统计结论时再做）
 
 ## 快速命令
 

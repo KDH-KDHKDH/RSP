@@ -23,7 +23,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.generator import (create_artificial_network, generate_travel_times,
                            generate_beijing_travel_times, random_od_pairs)
-from src.osm_network import load_beijing_network
+from src.osm_network import HIGHWAY_CV_RANGE, load_beijing_network
 
 
 PRESETS = {
@@ -78,9 +78,13 @@ def generate_data(nodes: int, edges: int, samples: int, repeats: int,
         "seed": seed,
     }
     if preset == "beijing":
-        meta["network_source"] = "OpenStreetMap (osmnx)"
+        meta["network_source"] = "OpenStreetMap (offline GraphML extracted from PBF)"
         meta["location"] = "Beijing, China"
         meta["travel_time_model"] = "lognormal, attribute-driven (length/speed + road-type CV)"
+        meta["highway_cv_range"] = {
+            highway: [cv_lo, cv_hi]
+            for highway, (cv_lo, cv_hi) in sorted(HIGHWAY_CV_RANGE.items())
+        }
     else:
         meta["travel_time_range"] = [10.0, 100.0]
         meta["travel_time_std_ratio"] = [0.5, 1.2]

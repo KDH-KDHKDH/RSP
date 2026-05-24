@@ -3,7 +3,7 @@
 import numpy as np
 import pulp
 from .graph import RoadNetwork
-from .ilp_solver import _get_solver
+from .ilp_solver import _get_solver, _new_variable
 
 
 def solve_milp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int,
@@ -27,8 +27,8 @@ def solve_milp(network: RoadNetwork, W: np.ndarray, origin: int, destination: in
     prob = pulp.LpProblem("Punctuality_MILP", pulp.LpMinimize)
 
     # Decision variables
-    x = [pulp.LpVariable(f"x_{j}", cat="Binary") for j in range(num_edges)]
-    p = [pulp.LpVariable(f"p_{i}", lowBound=0, cat="Continuous") for i in range(N)]
+    x = [_new_variable(f"x_{j}", cat="Binary") for j in range(num_edges)]
+    p = [_new_variable(f"p_{i}", low_bound=0, cat="Continuous") for i in range(N)]
 
     # Objective: min Σ pᵢ
     prob += pulp.lpSum(p)

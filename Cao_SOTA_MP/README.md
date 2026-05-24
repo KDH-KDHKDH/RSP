@@ -9,13 +9,15 @@ with maximum probability of arriving on-time under stochastic edge travel times.
 # Install dependencies
 uv sync
 
-# Generate experiment data (preset: small / full)
+# Generate experiment data
 uv run python Cao_SOTA_MP/data/generate.py --preset small
 uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42
+uv run python Cao_SOTA_MP/data/generate.py --preset beijing
 
 # Run experiment
 uv run python Cao_SOTA_MP/run.py                                                # small dataset (default)
 uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot # full dataset with figures
+uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing --plot
 
 # Run tests
 uv run pytest Cao_SOTA_MP/tests/ -v
@@ -29,7 +31,7 @@ uv run pytest Cao_SOTA_MP/tests/ -v
 | **MILP** | `src/milp_solver.py` | L1-norm relaxation with continuous penalty variables |
 | **Dijkstra** | `src/dijkstra_solver.py` | Mean shortest path baseline |
 
-All solvers take `(network, W, origin, destination, tau)` and return `{path_x, punctuality_prob, status, solve_time}`.
+All solvers take `(network, W, origin, destination, tau)` and return `{path_x, lateness_count, punctuality_prob, status, solve_time}`.
 
 ## Current Results
 
@@ -41,23 +43,22 @@ All solvers take `(network, W, origin, destination, tau)` and return `{path_x, p
 | Dijkstra | 75.2% | 88.3% | 0.0003s |
 | MILP | 63.7% | 90.2% | 0.17s |
 
-### Beijing OSM Network (587 nodes, 1066 edges, CV=0.54, 3 repeats)
+### Beijing OSM Network (587 nodes, 1066 edges, CV=0.775, 3 repeats)
 
 | Method | Path-Match Accuracy | Tie-Aware Accuracy | Solve Time (mean) |
 |--------|--------------------|--------------------|--------------------|
-| ILP | **100.0%** | **100.0%** | 22.2s |
-| Dijkstra | 85.6% | 96.7% | 0.005s |
-| MILP | 81.1% | 95.6% | 5.2s |
-
-Note: Beijing high-CV data (median 0.775) generated, experiment pending.
+| ILP | **100.0%** | **100.0%** | 23.3s |
+| Dijkstra | 71.1% | 90.0% | 0.004s |
+| MILP | 68.9% | 88.9% | 7.7s |
 
 ILP = 100% accuracy reproduced. Tie-aware accuracy shows baselines closer to optimal than strict path-matching suggests (objective_gap < 0.001 in both networks).
+For the latest results in this repo, start with report 09 (artificial network) and report 12 (Beijing high-CV).
 
 ## Project Structure
 
 ```
 Cao_SOTA_MP/
-├── data/                # Generated datasets (small / full/seed42)
+├── data/                # Generated datasets (small / full/seed42 / beijing)
 │   └── generate.py      # Data generation entry point (--preset, --seed)
 ├── configs/             # YAML experiment configs
 ├── src/                 # Source code (flat package)
@@ -94,7 +95,7 @@ uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --dat
 
 ## Reports
 
-See `docs/report/index.html` for all 11 experiment reports with detailed analysis.
+See `docs/report/index.html` for all 13 reports, including the latest maintenance follow-up.
 
 ## Documentation Structure
 
@@ -159,7 +160,7 @@ Each file under `docs/` has a specific purpose and content scope. When modifying
 
 ### `docs/spec.md` — Specification
 
-**Purpose:** Defines what "done" means. The authoritative reference for interfaces, algorithms, data formats, acceptance criteria, and technology stack.
+**Purpose:** Defines what "done" means. The primary reference for interfaces, algorithms, data formats, acceptance criteria, and technology stack.
 
 **Content rules:**
 - Specify all external interfaces (CLI arguments, config format, solver signatures, data file formats)

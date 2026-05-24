@@ -260,13 +260,14 @@ s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
 - [x] ILP计算时间 ~0.34s (与论文CPLEX 0.32s持平)
 - [x] Dijkstra路径匹配准确率 75.2% (论文 60-70%, 偏差 ~5pp)
 - [x] MILP路径匹配准确率 63.7% (论文 70-80%, 偏差 ~-6pp)
-- [ ] tie-aware准确率达到 >85% (Dijkstra 88.3% ✅, MILP 90.2% ✅)
+- [x] tie-aware准确率达到 >85% (Dijkstra 88.3%, MILP 90.2%)
 
-**北京路网 (CV=0.775, 待跑):**
-- [ ] ILP准确率 = 100%
-- [ ] ILP计算时间 < 120s (time limit)
-- [ ] Dijkstra/MILP 路径匹配准确率在合理范围
-- [ ] tie-aware 准确率 > 90%
+**北京路网 (CV=0.775, 报告 12):**
+- [x] ILP准确率 = 100%
+- [x] ILP平均计算时间 23.3s，单例可触及 120s time limit 但能返回 Optimal
+- [x] Dijkstra路径匹配准确率 71.1%（高方差下明显低于旧 CV=0.54 的 85.6%）
+- [x] MILP路径匹配准确率 68.9%
+- [x] Dijkstra tie-aware = 90.0%，MILP tie-aware = 88.9%
 
 ### 6.3 可视化验收
 - [ ] 复现 Fig.2(a): 准确率 vs α 折线图

@@ -161,7 +161,7 @@ Open `docs/report/index.html` in a browser for a navigable index. Key reports:
 | 11 | project_audit | Comprehensive project audit (code, data, results, docs) |
 | 08 | beijing | Original Beijing experiment (before Phase 8 fixes) |
 
-**Use reports 09 and 10 as the authoritative reference.** Report 07's MILP=78.3% is inflated (only 2 repeats vs 3 in report 09).
+**When reading historical results, start from reports 09 and 10 because they were the latest results at that stage.** Report 07's MILP=78.3% is inflated (only 2 repeats vs 3 in report 09).
 
 ## 10. Known Issues (Non-Blocking)
 

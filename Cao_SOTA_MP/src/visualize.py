@@ -1,71 +1,159 @@
 """Result visualization — reproduce paper figures."""
 
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from pathlib import Path
+
+
+METHOD_ORDER = ["ILP", "MILP", "Dijkstra"]
+METHOD_STYLE = {
+    "ILP": {"color": "#2563eb", "marker": "o"},
+    "MILP": {"color": "#dc2626", "marker": "s"},
+    "Dijkstra": {"color": "#059669", "marker": "^"},
+}
 
 
 def plot_accuracy_vs_deadline(df: pd.DataFrame, output_dir: str = "results/figures"):
     """Reproduce Fig.2(a): average accuracy for each method vs deadline (alpha)."""
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    acc = df.groupby(["alpha", "method"])["correct"].mean().reset_index()
-    acc.columns = ["alpha", "method", "accuracy"]
+    acc = (
+        df.groupby(["alpha", "method"], as_index=False)["correct"]
+        .mean()
+        .rename(columns={"correct": "accuracy"})
+        .sort_values(["method", "alpha"])
+    )
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    for method in ["ILP", "MILP", "Dijkstra"]:
+    for method in METHOD_ORDER:
         subset = acc[acc["method"] == method]
-        ax.plot(subset["alpha"], subset["accuracy"], "o-", label=method, markersize=8)
+        style = METHOD_STYLE[method]
+        ax.plot(
+            subset["alpha"],
+            subset["accuracy"],
+            label=method,
+            color=style["color"],
+            marker=style["marker"],
+            linewidth=2.2,
+            markersize=7,
+        )
 
     ax.set_xlabel("α (deadline level)")
-    ax.set_ylabel("Average Accuracy")
-    ax.set_ylim(0, 1.1)
+    ax.set_ylabel("Path-Match Accuracy")
+    ax.set_xticks(sorted(acc["alpha"].unique()))
+    ax.set_ylim(0.55, 1.02)
     ax.legend()
-    ax.set_title("Accuracy Comparison with Different Deadlines")
-    ax.grid(True, alpha=0.3)
+    ax.set_title("Accuracy vs Deadline")
+    ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.8)
     fig.tight_layout()
     fig.savefig(f"{output_dir}/accuracy_vs_deadline.png", dpi=150)
     plt.close(fig)
     print(f"  Saved: {output_dir}/accuracy_vs_deadline.png")
+
+    if "tie_aware_correct" in df.columns and df["tie_aware_correct"].notna().any():
+        tie_acc = (
+            df.groupby(["alpha", "method"], as_index=False)["tie_aware_correct"]
+            .mean()
+            .rename(columns={"tie_aware_correct": "accuracy"})
+            .sort_values(["method", "alpha"])
+        )
+        fig, ax = plt.subplots(figsize=(8, 5))
+        for method in METHOD_ORDER:
+            subset = tie_acc[tie_acc["method"] == method]
+            style = METHOD_STYLE[method]
+            ax.plot(
+                subset["alpha"],
+                subset["accuracy"],
+                label=method,
+                color=style["color"],
+                marker=style["marker"],
+                linewidth=2.2,
+                markersize=7,
+            )
+
+        ax.set_xlabel("α (deadline level)")
+        ax.set_ylabel("Tie-Aware Accuracy")
+        ax.set_xticks(sorted(tie_acc["alpha"].unique()))
+        ax.set_ylim(0.8, 1.02)
+        ax.legend()
+        ax.set_title("Tie-Aware Accuracy vs Deadline")
+        ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.8)
+        fig.tight_layout()
+        fig.savefig(f"{output_dir}/tie_aware_accuracy_vs_deadline.png", dpi=150)
+        plt.close(fig)
+        print(f"  Saved: {output_dir}/tie_aware_accuracy_vs_deadline.png")
 
 
 def plot_probability_comparison(df: pd.DataFrame, output_dir: str = "results/figures"):
     """Reproduce Fig.2(b)(c): punctuality probability scatter plots."""
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    ilp_df = df[df["method"] == "ILP"].reset_index(drop=True)
-    milp_df = df[df["method"] == "MILP"].reset_index(drop=True)
-    dij_df = df[df["method"] == "Dijkstra"].reset_index(drop=True)
+    key_cols = ["repeat", "od_idx", "origin", "dest", "alpha"]
+    ilp_df = (
+        df[df["method"] == "ILP"][key_cols + ["punctuality_prob"]]
+        .rename(columns={"punctuality_prob": "ilp_prob"})
+    )
 
-    # ILP vs Dijkstra
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    comparisons = [("Dijkstra", axes[0]), ("MILP", axes[1])]
 
-    ax = axes[0]
-    n = min(len(ilp_df), len(dij_df), 200)
-    ax.scatter(range(n), ilp_df["punctuality_prob"][:n], s=15, label="ILP", alpha=0.7)
-    ax.scatter(range(n), dij_df["punctuality_prob"][:n], s=15, label="Dijkstra", alpha=0.7)
-    ax.set_xlabel("Test Instance")
-    ax.set_ylabel("Punctuality Probability")
-    ax.set_title("ILP vs Dijkstra")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+    for method, ax in comparisons:
+        method_df = (
+            df[df["method"] == method][key_cols + ["punctuality_prob"]]
+            .rename(columns={"punctuality_prob": "method_prob"})
+        )
+        merged = ilp_df.merge(method_df, on=key_cols, how="inner")
+        style = METHOD_STYLE[method]
 
-    # ILP vs MILP
-    ax = axes[1]
-    n = min(len(ilp_df), len(milp_df), 200)
-    ax.scatter(range(n), ilp_df["punctuality_prob"][:n], s=15, label="ILP", alpha=0.7)
-    ax.scatter(range(n), milp_df["punctuality_prob"][:n], s=15, label="MILP", alpha=0.7)
-    ax.set_xlabel("Test Instance")
-    ax.set_ylabel("Punctuality Probability")
-    ax.set_title("ILP vs MILP")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+        ax.scatter(
+            merged["ilp_prob"],
+            merged["method_prob"],
+            s=26,
+            alpha=0.7,
+            color=style["color"],
+            edgecolors="none",
+        )
+
+        min_prob = min(merged["ilp_prob"].min(), merged["method_prob"].min())
+        max_prob = max(merged["ilp_prob"].max(), merged["method_prob"].max())
+        lo = max(0.0, min_prob - 0.01)
+        hi = min(1.0, max_prob + 0.01)
+        ax.plot([lo, hi], [lo, hi], linestyle="--", color="#64748b", linewidth=1.2)
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_xlabel("ILP Punctuality Probability")
+        ax.set_ylabel(f"{method} Punctuality Probability")
+        ax.set_title(f"ILP vs {method}")
+        ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.8)
 
     fig.tight_layout()
     fig.savefig(f"{output_dir}/probability_comparison.png", dpi=150)
     plt.close(fig)
     print(f"  Saved: {output_dir}/probability_comparison.png")
+
+
+def save_compute_time_table(df: pd.DataFrame, output_dir: str = "results"):
+    """Save a paper-style compute-time summary table."""
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    grouped = (
+        df.groupby("method")
+        .agg(
+            path_match_accuracy=("correct", "mean"),
+            tie_aware_accuracy=("tie_aware_correct", "mean"),
+            mean_solve_time_s=("solve_time", "mean"),
+            median_solve_time_s=("solve_time", "median"),
+            max_solve_time_s=("solve_time", "max"),
+        )
+        .reindex(METHOD_ORDER)
+        .reset_index()
+    )
+
+    csv_path = Path(output_dir) / "compute_time_summary.csv"
+    grouped.to_csv(csv_path, index=False)
+    print(f"  Saved: {csv_path}")
 
 
 def print_summary(df: pd.DataFrame):

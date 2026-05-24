@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-Phase 1-8 全部完成。ILP=100% 精确解已复现。10/10测试通过。两个路网验证完成（人工65节点 + 北京587节点）。
+Phase 1-9 全部完成。ILP=100% 精确解已复现。10/10测试通过。两个路网验证完成（人工65节点 + 北京587节点）。
 
-**待推进:** Phase 5 (可视化优化)、Phase 9 (北京高方差实验重跑)。
+**待推进:** 多 seed 统计显著性实验与真实轨迹数据扩展（按需要推进）。
 
 ## 工作流程
 
@@ -38,10 +38,10 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 ### Phase 4b: 方差修复 ✅
 两轮方差增大 (CV 0.25 → 0.54 → 0.83)，修复高估准确率问题。准确率指标从概率匹配改为路径向量匹配。项目全面修复(P0-P3)。
 
-### Phase 5: 可视化优化
-- [ ] 复现 Fig.2(a): 准确率 vs α 折线图
-- [ ] 复现 Fig.2(b)(c): ILP vs 其他方法准时概率散点图
-- [ ] 复现 Table I: 计算时间对比表
+### Phase 5: 可视化优化 ✅
+- [x] 复现 Fig.2(a): 准确率 vs α 折线图
+- [x] 复现 Fig.2(b)(c): ILP vs 其他方法准时概率散点图
+- [x] 输出 Table I 风格计算时间汇总表 (`compute_time_summary.csv`)
 
 ### Phase 6: 北京路网 ✅
 **方案 C:** OSM真实路网拓扑 + 属性驱动模拟行程时间。
@@ -66,9 +66,17 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 - tie_aware_accuracy 纳入主评估指标
 - 北京CV增大 (median 0.54→0.775), 数据已生成
 
-### Phase 9: 北京高方差实验
-- [ ] 重跑北京实验 (CV=0.775, 数据已生成, 预计 ~140 min)
-- [ ] 更新报告 08/10 到新高方差数据
+### Phase 9: 北京高方差实验 ✅
+- [x] 北京高方差实验完成 (CV=0.775, 90 jobs, 约 140 min)
+- [x] 生成报告 12，记录北京高方差阶段的最新结果
+
+### Maintenance: 审计对齐与后续排程
+- [x] 对齐 README / plan / todo / spec 与 report 12 后状态
+- [x] 北京 `meta.yaml` 补充 `highway_cv_range`
+- [x] 新增维护跟进报告，解释历史报告不可变与报告关系
+- [x] Candidate path / deadline 逻辑补单元测试
+- [x] PuLP 4.0 warning workaround，消除 deprecation warning
+- [ ] 如需统计显著性，再做多 seed 实验
 
 ## 报告命名规则
 
@@ -85,9 +93,11 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 | 06 | `06_seed42_highvar.html` | 种子42高方差实验 (CV=0.83) |
 | 07 | `07_seed42_tightM.html` | Tight big-M 优化验证 |
 | 08 | `08_beijing.html` | 北京路网实验 |
-| 09 | `09_seed42_audit_fix.html` | **权威**: 人工路网 Phase 8 审计修复 (新指标系统) |
-| 10 | `10_beijing_audit_fix.html` | **权威**: 北京路网 Phase 8 审计修复 (旧CV, 新指标系统) |
+| 09 | `09_seed42_audit_fix.html` | 人工路网 Phase 8 审计修复后的最新结果 (新指标系统) |
+| 10 | `10_beijing_audit_fix.html` | 北京路网 Phase 8 审计修复后的最新结果 (旧CV, 新指标系统) |
 | 11 | `11_project_audit.html` | 项目全面审计报告 |
+| 12 | `12_beijing_highvar.html` | 北京路网高方差阶段的最新结果 (CV=0.775) |
+| 13 | `13_maintenance_followup.html` | 维护/审计对齐报告 + 后续任务排程 |
 
 ## 关键决策
 

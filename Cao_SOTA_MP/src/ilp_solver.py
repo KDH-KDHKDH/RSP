@@ -5,6 +5,22 @@ import pulp
 from .graph import RoadNetwork
 
 
+def _new_variable(name: str, low_bound=None, up_bound=None, cat="Continuous"):
+    """Create a PuLP variable without triggering PuLP 4.0 deprecation warnings.
+
+    The installed PuLP version exposes ``prob.add_variable(...)`` but still forwards the
+    deprecation-suppression flag positionally, so warning noise remains. Use the explicit
+    keyword until the upstream helper is fixed.
+    """
+    return pulp.LpVariable(
+        name,
+        lowBound=low_bound,
+        upBound=up_bound,
+        cat=cat,
+        _skip_v4_deprecation=True,
+    )
+
+
 def solve_ilp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int,
               tau: float, big_m: float = 1e6, solver_name: str = "CBC",
               time_limit: int = 60) -> dict:
@@ -40,8 +56,8 @@ def solve_ilp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int
     prob = pulp.LpProblem("Punctuality_ILP", pulp.LpMinimize)
 
     # Decision variables
-    x = [pulp.LpVariable(f"x_{j}", cat="Binary") for j in range(num_edges)]
-    iota = [pulp.LpVariable(f"iota_{i}", cat="Binary") for i in range(N)]
+    x = [_new_variable(f"x_{j}", cat="Binary") for j in range(num_edges)]
+    iota = [_new_variable(f"iota_{i}", cat="Binary") for i in range(N)]
 
     # Objective: min Σ ιᵢ
     prob += pulp.lpSum(iota)
