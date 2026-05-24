@@ -1,8 +1,8 @@
 # TODO — 当前待办
 
-## 当前阶段: Conflict-Graph Planning
+## 当前阶段: Conflict-Graph Audit + Beijing Variance Planning
 
-Phase 1-9 全部完成。主评估口径和 gap 阈值已定，当前进入新人工图实验族的规划与审计阶段。
+Phase 1-9 全部完成。主评估口径和 gap 阈值已定，当前进入新人工图实验族的审计与北京冲突化方差方案规划阶段。
 
 ## 重要文件路径
 
@@ -20,7 +20,7 @@ Phase 1-9 全部完成。主评估口径和 gap 阈值已定，当前进入新�
 | `src/generator.py` | 数据生成逻辑 |
 | `docs/change.md` | 变更日志 |
 | `docs/report/index.html` | 报告索引页 |
-| `docs/report/` | 历史报告 (01~16) |
+| `docs/report/` | 历史报告 (01~19) |
 
 ## 已完成
 
@@ -43,6 +43,9 @@ Phase 1-9 全部完成。主评估口径和 gap 阈值已定，当前进入新�
 - [x] 报告 14: small 数据集 deadline 协议审计（heuristic vs exact）
 - [x] 报告 15: full/seed42 notebook rerun 正式结果
 - [x] 报告 16: full/seed42 详细复盘与状态审计
+- [x] 报告 17: 1000-job 大规模验证
+- [x] 报告 18: metric policy rollout
+- [x] 报告 19: conflict graph seed524
 - [x] 维护对齐: README / plan / todo / spec / handover 与 report 12 状态同步
 - [x] Beijing meta.yaml 补充 highway_cv_range
 - [x] 报告 13: 维护/审计跟进与任务排程
@@ -68,6 +71,10 @@ Phase 1-9 全部完成。主评估口径和 gap 阈值已定，当前进入新�
   `slow_stable`: `mean ~ U(40, 90)`, `cv ~ U(0.2, 0.6)`
 - [x] **冲突结构检查** — 审计新图是否真的形成”快但险 vs 慢但稳”的可替代路径
 - [x] **新人工图实验报告** — 跑 `seed524` 单组实验，比较 ILP / MILP / Dijkstra 的分离度与 gap 结构
+- [ ] **冲突图机制证据补强** — 统计冲突 OD / 非冲突 OD、边类型占比、MILP 提升来源
+- [ ] **冲突图报告措辞收口** — 把“全面占优”等强结论改成与证据匹配的表述
+- [ ] **北京冲突化方差方案** — 在北京真实拓扑上设计类似 `fast_risky / slow_stable` 的属性分层
+- [ ] **北京冲突化审计标准** — 先定义“什么叫真的制造了路径级冲突”，再安排跑实验
 
 ### 中优先级
 

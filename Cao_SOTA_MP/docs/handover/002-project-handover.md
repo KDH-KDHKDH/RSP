@@ -164,7 +164,7 @@ def solve_xxx(network: RoadNetwork, W: np.ndarray,      # W: N × |L| travel tim
 | 16 | 16_full_seed42_detailed_review | Artificial | detailed metrics review, follow-up plan, project status audit |
 | 17 | 17_full_protocol_seed42_1000jobs | Artificial | 1000-job large-scale validation on full seed42 |
 
-**Latest result reports in this repo:** 16/17 (artificial), 12 (Beijing high-CV).
+**Latest result reports in this repo:** 19 (conflict artificial graph), 17 (seed42 large-scale artificial), 12 (Beijing high-CV).
 
 Open `docs/report/index.html` for a navigable index with evolution table.
 
@@ -191,6 +191,8 @@ Open `docs/report/index.html` for a navigable index with evolution table.
 - **Metric policy update** — Use tie-aware as the default accuracy headline in summaries and plots; keep path-match as structural diagnostic
 - **Strict-metric cleanup** — Remove `tie_aware_accuracy_strict` related code paths and outputs from routine maintenance
 - **Conflict-graph artificial network** — Add a new `seed524` artificial graph family with low-mean/high-CV and high-mean/low-CV edge classes
+- **Conflict-graph mechanism audit** — Separate conflict ODs from non-conflict ODs and explain where MILP gains actually come from
+- **Beijing conflict-like variance plan** — Design a topology-aware “fast-risky vs slow-stable” variance layering for the Beijing graph
 
 ### Low
 - T-Drive real GPS trajectory data integration (optional, needs data acquisition)
