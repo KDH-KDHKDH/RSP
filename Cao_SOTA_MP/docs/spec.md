@@ -35,6 +35,20 @@ uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --dat
 | --plot | false | 是否生成图表 |
 | --output | config中output.dir | 输出目录 |
 
+### 2.2a Notebook 入口 `experiment.ipynb`
+
+`Cao_SOTA_MP/experiment.ipynb` 是当前推荐的交互式运行入口。
+
+用途：
+- 单个 `(repeat, OD, alpha)` case 调试
+- 小规模图上的 exact deadline 审计
+- 批量实验前的配置确认与结果抽样检查
+
+要求：
+- 使用 `uv` 管理的解释器环境
+- Notebook 配置区应与 `run.py` / `experiment.py` 的关键协议开关保持一致
+- 批量实验 cell 优先复用 `run_experiment()`，避免与主实现漂移
+
 ### 2.3 配置文件格式 (YAML)
 
 ```yaml
@@ -58,6 +72,10 @@ output:
 
 candidate_paths:
   max_paths: 1000
+
+deadline:
+  mode: heuristic          # heuristic / exact
+  enumeration_cutoff: 15   # only used when mode=exact
 ```
 
 ### 2.4 求解器统一接口
@@ -217,13 +235,15 @@ s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
 
 ### 4.3 评估指标
 
-1. **路径匹配准确率 (Path-Match Accuracy):**
-   - `correct = np.array_equal(method_path, ilp_path)`
-   - 严格比较边选择向量是否完全一致
-
-2. **Tie-Aware 准确率:**
+1. **Tie-Aware 准确率（主准确率）:**
    - `tie_aware_correct = |p_ILP - p_method| ≤ 1/N`
-   - 考虑准时概率差异在采样误差范围内即为等效
+   - 含义：若两条路径的准时概率差异不超过一个样本分辨率，则视为实践上等效
+   - 当前默认主比较口径使用该指标
+
+2. **路径匹配准确率 (Path-Match Accuracy, 次级指标):**
+   - `correct = np.array_equal(method_path, ilp_path)`
+   - 含义：严格比较边选择向量是否完全一致
+   - 用途：保留作结构诊断，不作为唯一主结论来源
 
 3. **Objective Gap:**
    - `objective_gap = p_ILP - p_method`
@@ -232,6 +252,42 @@ s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
 4. **计算时间:** 各方法的平均求解时间（秒）
 
 5. **辅助指标:** late_count, delay_sum, max_delay, path_length, mean_time
+6. **求解状态指标:** `status`, `reference_available`
+
+### 4.4 Deadline 协议
+
+论文定义：
+```
+τ = τ1 + α·(τ2 - τ1)
+```
+- `τ2`: 所有候选路径中的 minimax path time，即 `min_P max_i T_i(P)`
+- `τ1`: 达到 `τ2` 的同一路径上的最短样本时间
+
+本项目支持两种模式：
+- `deadline.mode = heuristic`：使用候选路径池近似 `τ2`
+- `deadline.mode = exact`：在可枚举的小图上直接枚举所有简单路径，严格按论文定义计算
+
+要求：
+- 小图审计、单元测试、论文协议验证时优先使用 `exact`
+- 大图批量实验默认使用 `heuristic`
+
+### 4.5 Tie-Aware 容忍规则
+
+当前默认规则：
+```
+|gap| ≤ 1/N
+```
+
+理由：
+- `1/N` 对应一个样本的概率分辨率
+- 与现有历史报告连续，便于横向比较
+
+后续允许探索但暂不默认采用的方案：
+- 更严格固定阈值，例如 `0.5/N`
+
+明确不建议：
+- 没有统计依据地“随便缩一点余量”
+- 引入复杂的 per-OD 自适应阈值规则作为默认方案
 
 ## 5. 求解器规格
 
@@ -249,31 +305,32 @@ s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
 ### 6.1 功能验收
 - [x] `uv run python run.py` 能一键跑通默认配置
 - [x] `--config` 能切换不同路网配置
+- [x] Notebook 配置区与 `run.py` 的 deadline / 审计开关保持一致
 - [x] ILP在小规模图上返回正确最优路径(与枚举一致, test_ilp_returns_optimal通过)
 - [x] MILP正确实现ℓ₁范数松弛
 - [x] Dijkstra正确计算最短期望路径
+- [x] `status != Optimal` 的 ILP job 在结果中保留记录，不得静默跳过
 
 ### 6.2 性能验收（对标论文）
 
 **人工路网 (CV=0.83, seed=42):**
 - [x] ILP准确率 = 100% (已验证)
 - [x] ILP计算时间 ~0.34s (与论文CPLEX 0.32s持平)
-- [x] Dijkstra路径匹配准确率 75.2% (论文 60-70%, 偏差 ~5pp)
-- [x] MILP路径匹配准确率 63.7% (论文 70-80%, 偏差 ~-6pp)
 - [x] tie-aware准确率达到 >85% (Dijkstra 88.3%, MILP 90.2%)
+- [x] 路径匹配准确率保留作辅助诊断 (Dijkstra 75.2%, MILP 63.7%)
 
 **北京路网 (CV=0.775, 报告 12):**
 - [x] ILP准确率 = 100%
 - [x] ILP平均计算时间 23.3s，单例可触及 120s time limit 但能返回 Optimal
-- [x] Dijkstra路径匹配准确率 71.1%（高方差下明显低于旧 CV=0.54 的 85.6%）
-- [x] MILP路径匹配准确率 68.9%
 - [x] Dijkstra tie-aware = 90.0%，MILP tie-aware = 88.9%
+- [x] 路径匹配准确率保留作辅助诊断 (Dijkstra 71.1%, MILP 68.9%)
 
 ### 6.3 可视化验收
-- [ ] 复现 Fig.2(a): 准确率 vs α 折线图
-- [ ] 复现 Fig.2(b)(c): 准时概率对比散点图
-- [ ] 复现 Table I: 计算时间对比表
+- [ ] 主图切换为 Tie-Aware Accuracy vs α
+- [ ] 路径匹配准确率图保留为附图/次级图
+- [x] 复现 Fig.2(b)(c): 准时概率对比散点图
+- [x] 复现 Table I: 计算时间对比表
 
 ### 6.4 测试验收
-- [x] 10/10 单元测试通过
-- [x] 覆盖: 图操作 + 关联矩阵 + ILP最优性(枚举验证) + 求解器接口
+- [x] 14/14 单元测试通过
+- [x] 覆盖: 图操作 + 关联矩阵 + ILP最优性(枚举验证) + 求解器接口 + deadline exact mode + 非最优样本记账

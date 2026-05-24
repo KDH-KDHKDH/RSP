@@ -2,12 +2,15 @@
 
 import sys
 from pathlib import Path
+from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 import networkx as nx
+import yaml
 from src.graph import RoadNetwork
 from src.generator import compute_deadline, generate_candidate_paths, generate_travel_times
+from src import experiment as experiment_mod
 from src.ilp_solver import solve_ilp
 from src.milp_solver import solve_milp
 from src.dijkstra_solver import solve_dijkstra
@@ -174,6 +177,90 @@ class TestDeadlineHeuristics:
 
         assert len(paths) == 2
         assert {tuple(path) for path in paths} == {tuple(self.path_a), tuple(self.path_b)}
+
+    def test_compute_deadline_exact_mode_enumerates_paths(self):
+        tau, diag = compute_deadline(
+            self.W,
+            self.net,
+            0,
+            4,
+            alpha=0.5,
+            mode="exact",
+            enumeration_cutoff=4,
+            return_diagnostics=True,
+        )
+
+        assert tau == 32.0
+        assert diag["candidate_count"] == 2
+        assert diag["mode"] == "exact"
+
+
+def test_run_experiment_keeps_nonoptimal_ilp_jobs(tmp_path):
+    net = make_small_network()
+    data_dir = tmp_path / "toy_data"
+    data_dir.mkdir()
+    net.save(data_dir / "network.npz")
+    np.save(data_dir / "od_pairs.npy", np.array([(0, 4)], dtype=np.int32))
+    W = np.ones((3, net.num_edges), dtype=np.float64)
+    np.savez(data_dir / "travel_times.npz", repeat_00=W)
+    with open(data_dir / "meta.yaml", "w") as f:
+        yaml.safe_dump({"num_repeats": 1, "num_od_pairs": 1, "num_samples": 3}, f)
+
+    config = {
+        "experiment": {"num_repeats": 1, "num_od_pairs": 1, "alphas": [0.5]},
+        "solver": {"backend": "CBC", "big_m": 1e6, "time_limit": 1},
+        "candidate_paths": {"max_paths": 10},
+        "deadline": {"mode": "exact", "enumeration_cutoff": 4},
+    }
+
+    with (
+        patch.object(
+            experiment_mod,
+            "compute_deadline",
+            return_value=(10.0, {"candidate_count": 2, "T_min": 8.0, "T_max": 12.0, "tau": 10.0, "candidate_puncts": [], "mode": "exact"}),
+        ),
+        patch.object(
+            experiment_mod,
+            "solve_ilp",
+            return_value={
+                "path_x": None,
+                "lateness_count": None,
+                "punctuality_prob": None,
+                "status": "TimeLimit",
+                "solve_time": 1.0,
+            },
+        ),
+        patch.object(
+            experiment_mod,
+            "solve_milp",
+            return_value={
+                "path_x": net.path_to_x([0, 1, 3, 4]),
+                "lateness_count": 0,
+                "punctuality_prob": 1.0,
+                "status": "Optimal",
+                "solve_time": 0.1,
+            },
+        ),
+        patch.object(
+            experiment_mod,
+            "solve_dijkstra",
+            return_value={
+                "path_x": net.path_to_x([0, 2, 3, 4]),
+                "lateness_count": 0,
+                "punctuality_prob": 1.0,
+                "status": "Optimal",
+                "solve_time": 0.001,
+            },
+        ),
+    ):
+        df = experiment_mod.run_experiment(config, data_dir=data_dir)
+
+    assert len(df) == 3
+    assert set(df["method"]) == {"ILP", "MILP", "Dijkstra"}
+    assert df["reference_available"].eq(False).all()
+    assert set(df["reference_status"]) == {"TimeLimit"}
+    assert df["correct"].isna().all()
+    assert df["objective_gap"].isna().all()
 
 
 if __name__ == "__main__":

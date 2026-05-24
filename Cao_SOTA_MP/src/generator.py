@@ -60,6 +60,8 @@ def compute_deadline(W: np.ndarray, network: RoadNetwork,
                      origin: int, destination: int, alpha: float,
                      paths: list[list[int]] | None = None,
                      max_candidate_paths: int = 1000,
+                     mode: str = "heuristic",
+                     enumeration_cutoff: int = 15,
                      seed: int = 42,
                      verbose: bool = False,
                      return_diagnostics: bool = False) -> float | tuple[float, dict]:
@@ -78,8 +80,23 @@ def compute_deadline(W: np.ndarray, network: RoadNetwork,
     candidate_puncts (punctuality of each candidate path against tau).
     """
     if paths is None:
-        paths = generate_candidate_paths(W, network, origin, destination,
-                                         max_paths=max_candidate_paths, seed=seed)
+        if mode == "exact":
+            paths = network.enumerate_paths(
+                origin,
+                destination,
+                cutoff=enumeration_cutoff,
+            )
+        elif mode == "heuristic":
+            paths = generate_candidate_paths(
+                W,
+                network,
+                origin,
+                destination,
+                max_paths=max_candidate_paths,
+                seed=seed,
+            )
+        else:
+            raise ValueError(f"Unsupported deadline mode: {mode}")
 
     if not paths:
         fallback = float(W.mean() * 3)
@@ -107,7 +124,7 @@ def compute_deadline(W: np.ndarray, network: RoadNetwork,
 
     if verbose:
         print(f"  [DEADLINE] candidates={len(paths)} T_min={best_tmin:.2f} "
-              f"T_max={best_tmax:.2f} tau={tau:.2f}")
+              f"T_max={best_tmax:.2f} tau={tau:.2f} mode={mode}")
 
     if return_diagnostics:
         N = W.shape[0]
@@ -122,6 +139,7 @@ def compute_deadline(W: np.ndarray, network: RoadNetwork,
             "T_max": float(best_tmax),
             "tau": float(tau),
             "candidate_puncts": candidate_puncts,
+            "mode": mode,
         }
 
     return tau

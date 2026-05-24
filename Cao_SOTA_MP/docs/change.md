@@ -1,11 +1,39 @@
 # 变更日志 (Changelog)
 
+## [2026-05-24] 维护文档更新：主准确率与 tie-aware 规则计划
+- README / plan / todo / spec / handover 同步记录后续评估口径：将 tie-aware accuracy 作为主准确率，路径匹配降为辅助结构诊断
+- 明确当前默认容忍规则继续使用 `|gap| ≤ 1/N`
+- 明确“直接随意缩小一点余量”不作为默认方案；阈值策略保持简单，优先只比较 `1/N` 和一个统一更严格阈值
+- 将后续待办拆分为：主图切换、阈值敏感性实验、多 seed 扩展
+
+## [2026-05-24] Full Seed42 详细复盘报告 16
+- 基于 `results/full_protocol_seed42_scip/` 的 notebook rerun 输出，新增详细复盘报告 `docs/report/16_full_seed42_detailed_review.html`
+- 报告 16 包含：总体指标、按 α 分析、repeat 稳定性、objective gap 结构、worst cases、后续计划和项目状态简单审计
+- 报告索引更新到 16 份
+
+## [2026-05-24] Full Seed42 Notebook Rerun + 报告 15
+- 基于 `experiment.ipynb` 当前输出结果，整理 full/seed42 + SCIP 的正式实验报告 `docs/report/15_full_seed42_notebook_rerun.html`
+- 补写结构化结果文件：`summary.csv`、`status_counts.csv`、`path_match_by_alpha.csv`、`tie_aware_by_alpha.csv`
+- 结果确认：ILP 100%, Dijkstra 75.2%, MILP 63.7%，ILP reference availability = 100%
+- 说明计时口径变化：当前报告使用 wall-clock solve time，不再直接依赖 solver 内部时间字段
+
+## [2026-05-24] Deadline 协议审计实验
+- 使用 notebook-first 共享逻辑跑 `data/small` 的 `deadline.mode=heuristic` vs `exact` 对照实验（45 jobs）
+- 结果：`tau_diff` 在 45/45 个 job 上均为 0，Dijkstra / MILP / ILP 的 path-match、tie-aware 和 punctuality 结果完全一致
+- 新增报告 14: `docs/report/14_deadline_protocol_audit.html`
+- 结果落盘到 `results/protocol_audit_small/`
+- 发现并修复 CBC 下 `prob.solutionTime` 可能为负的问题，ILP/MILP 改为统一返回 wall-clock solve time
+
 ## [2026-05-24] 维护对齐 + 元数据追溯修复
 - README / plan / todo / spec 对齐到 report 12 之后的真实状态，移除“北京高方差待跑”的过时表述
 - Beijing 数据生成元数据补全：`data/generate.py` 现在写入 `highway_cv_range`，`data/beijing/meta.yaml` 已同步补齐
 - `network_source` 统一为离线 GraphML/PBF 提取表述，避免与文档中的 `osmium` 离线流程冲突
 - 新增报告 13: `docs/report/13_maintenance_followup.html`，用于承接 report 11 中已被后续结果更新的维护/审计结论
 - 报告索引与 handover 更新，明确 report 09 / 12 为当前结果；report 07 的 MILP 抽样偏差改由后续维护报告说明，不覆写历史编号报告
+- 论文协议对齐：`deadline.mode` 支持 `heuristic / exact`，小图审计可按论文定义直接枚举路径计算 τ
+- 实验记账修复：`run_experiment()` 不再静默跳过 `ILP != Optimal` 的 job，而是保留 `status` / `reference_available` / `reference_status`
+- Notebook-first：`notebooks/experiment.ipynb` 变为推荐运行入口，并复用 `run_experiment()` 共享主实验逻辑
+- 测试继续扩展到 14 项，覆盖 exact deadline 和非最优样本保留
 
 ## [2026-05-24] 北京高方差实验完成 + Notebook + 索引更新
 - 北京路网高方差实验 (CV=0.775) 完成: ILP 100%, Dijkstra 71.1% (-14.5pp vs CV=0.54), MILP 68.9% (-12.2pp)

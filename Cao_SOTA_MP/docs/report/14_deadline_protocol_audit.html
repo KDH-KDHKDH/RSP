@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>实验报告 14: Deadline 协议对齐审计 — Cao SOTA MP</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 960px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--accent); }
+h2 { font-size: 1.3rem; margin: 2rem 0 0.8rem; padding-bottom: 0.3rem; border-bottom: 2px solid var(--accent); }
+p, li { margin-bottom: 0.6rem; }
+ul, ol { padding-left: 1.5rem; }
+.meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+.good { background: #e8f5e9; border-left: 4px solid #43a047; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.info { background: #eff6ff; border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.8rem; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; }
+tr:nth-child(even) { background: #f8fafc; }
+.code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>实验报告 14: Deadline 协议对齐审计</h1>
+<div class="meta">
+    <strong>日期:</strong> 2026-05-24 |
+    <strong>数据集:</strong> <span class="code">data/small</span> |
+    <strong>目标:</strong> 比较 <span class="code">deadline.mode=heuristic</span> 与 <span class="code">deadline.mode=exact</span>
+</div>
+
+<div class="good">
+    <strong>核心结论：</strong>在当前 <span class="code">data/small</span> 数据集、默认 <span class="code">max_paths=1000</span> 配置下，
+    heuristic 与 exact 两种 deadline 协议给出的 <span class="code">τ</span> 完全一致，45/45 个 job 的后续 ILP/MILP/Dijkstra 结果也完全一致。
+</div>
+
+<h2>1. 背景</h2>
+<div class="card">
+    <p>此前项目已实现论文协议对齐：<span class="code">compute_deadline()</span> 支持 <span class="code">heuristic</span> 与 <span class="code">exact</span> 两种模式。</p>
+    <p>本次审计要回答两个问题：</p>
+    <ol>
+        <li>当前默认启发式 candidate-path 流程，是否已经偏离论文定义的 exact deadline？</li>
+        <li>Notebook-first 入口复用主实验逻辑后，是否会改变现有实验结果？</li>
+    </ol>
+</div>
+
+<h2>2. 实验设置</h2>
+<table>
+<tr><th>项</th><th>设置</th></tr>
+<tr><td>入口</td><td>Notebook-first 配置，对应共享逻辑 <span class="code">run_experiment()</span></td></tr>
+<tr><td>数据</td><td><span class="code">data/small</span>（10 节点，20 边）</td></tr>
+<tr><td>重复</td><td>3 repeats</td></tr>
+<tr><td>OD 对</td><td>5</td></tr>
+<tr><td>α</td><td>0.5, 0.7, 0.9</td></tr>
+<tr><td>总 job 数</td><td>45</td></tr>
+<tr><td>Solver</td><td>CBC</td></tr>
+<tr><td>比较对象</td><td><span class="code">deadline.mode=heuristic</span> vs <span class="code">deadline.mode=exact</span></td></tr>
+</table>
+
+<div class="info">
+    <strong>说明：</strong>本实验的目的不是重新比较 ILP/MILP/Dijkstra，而是审计 deadline 协议本身是否改变问题定义和下游结果。
+</div>
+
+<h2>3. 结果概览</h2>
+<table>
+<tr><th>模式</th><th>方法</th><th>Path-Match</th><th>Tie-Aware</th><th>Mean Punctuality</th><th>Mean Solve Time</th></tr>
+<tr><td>heuristic</td><td>ILP</td><td>100.0%</td><td>100.0%</td><td>0.9293</td><td>0.0109s</td></tr>
+<tr><td>heuristic</td><td>MILP</td><td>84.4%</td><td>97.8%</td><td>0.9284</td><td>0.0087s</td></tr>
+<tr><td>heuristic</td><td>Dijkstra</td><td>91.1%</td><td>97.8%</td><td>0.9289</td><td>0.0001s</td></tr>
+<tr><td>exact</td><td>ILP</td><td>100.0%</td><td>100.0%</td><td>0.9293</td><td>0.0103s</td></tr>
+<tr><td>exact</td><td>MILP</td><td>84.4%</td><td>97.8%</td><td>0.9284</td><td>0.0081s</td></tr>
+<tr><td>exact</td><td>Dijkstra</td><td>91.1%</td><td>97.8%</td><td>0.9289</td><td>0.0001s</td></tr>
+</table>
+
+<h2>4. Deadline 对比</h2>
+<div class="card">
+    <p><strong>45/45 个 job 的 <span class="code">tau_diff = tau_heur - tau_exact = 0</span>。</strong></p>
+    <p>统计结果：</p>
+    <ul>
+        <li>mean = 0.0</li>
+        <li>std = 0.0</li>
+        <li>min = 0.0</li>
+        <li>max = 0.0</li>
+    </ul>
+    <p>同时，每个 job 的 candidate path 数量也完全一致，分布为 1 / 3 / 6 / 8 / 13 条路径。</p>
+</div>
+
+<div class="good">
+    这说明在当前 small 数据集上，启发式 candidate-path 生成实际上已经找到了与 exact 枚举相同的路径集合，因此并没有引入 deadline 偏差。
+</div>
+
+<h2>5. 下游结果差异</h2>
+<table>
+<tr><th>方法</th><th>比较 job 数</th><th>correct_changed</th><th>mean_abs_punct_diff</th><th>max_abs_punct_diff</th></tr>
+<tr><td>Dijkstra</td><td>45</td><td>0</td><td>0.0</td><td>0.0</td></tr>
+<tr><td>MILP</td><td>45</td><td>0</td><td>0.0</td><td>0.0</td></tr>
+</table>
+
+<p>ILP 作为 reference path 的结果也完全一致，因此这次协议对齐没有改变 small 数据集上的实验结论。</p>
+
+<h2>6. 附带修复</h2>
+<div class="warn">
+    在首次跑审计时，发现 CBC 下个别 <span class="code">MILP solve_time</span> 可能出现负值。这不是算法结果错误，而是直接读取求解器内部时间字段的副作用。<br>
+    本次已统一改成 wall-clock 计时后重跑，报告中的 solve time 已使用修正后的结果。
+</div>
+
+<h2>7. 结论与下一步</h2>
+<div class="info">
+    <p>本次实验证明了两件事：</p>
+    <ol>
+        <li>论文协议对齐代码路径是正确的；</li>
+        <li>Notebook-first 入口复用主实验逻辑后，没有引入 small 数据集上的结果漂移。</li>
+    </ol>
+    <p>但这并不意味着大图上 heuristic 与 exact 永远一致。下一步最有价值的工作仍然是：</p>
+    <ul>
+        <li>继续做多 seed 统计显著性实验；</li>
+        <li>如果要进一步审计 deadline 偏差，构造一个“路径更多、heuristic 更容易漏路径”的小图或中图审计集。</li>
+    </ul>
+</div>
+
+<div class="meta" style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border);">
+    结果目录：<span class="code">results/protocol_audit_small/</span> |
+    核心文件：<span class="code">summary_by_mode.csv</span>,
+    <span class="code">deadline_comparison.csv</span>,
+    <span class="code">comparison.csv</span>
+</div>
+
+</body>
+</html>

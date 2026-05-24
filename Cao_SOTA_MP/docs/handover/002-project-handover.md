@@ -45,7 +45,7 @@ Reproduction of **Cao et al. (2020)** — "Finding the Shortest Path with Maximu
 | Dijkstra | 71.1% | 90.0% | 0.004s |
 | MILP | 68.9% | 88.9% | 7.7s |
 
-**Key finding:** Higher CV widens ILP advantage. At CV=0.775, ILP leads Dijkstra by +28.9pp and MILP by +31.1pp (path-match). Beijing's grid topology creates a flat punctuality surface — tie-aware metrics (both ~90%) better reflect practical performance.
+**Key finding:** Higher CV widens ILP advantage in strict path-match terms. At the same time, Beijing's grid topology creates a flat punctuality surface, so tie-aware metrics (both ~90%) better reflect practical performance and are the planned primary comparison metric for later maintenance.
 
 ## 4. Quick Start
 
@@ -63,7 +63,7 @@ uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml \
     --data-dir Cao_SOTA_MP/data/beijing --plot
 
 # Interactive (Jupyter)
-# Open Cao_SOTA_MP/notebooks/experiment.ipynb in VS Code
+# Open Cao_SOTA_MP/experiment.ipynb in VS Code
 
 # Tests
 uv run pytest Cao_SOTA_MP/tests/ -v
@@ -89,7 +89,7 @@ Cao_SOTA_MP/
 │   ├── beijing/              # 587-node generated dataset (CV=0.775, 10 repeats, 20 OD, N=500)
 │   └── beijing_osm.graphml   # Pre-extracted OSM topology (osmium PBF → GraphML)
 ├── configs/                  # YAML: default / artificial_n500 / beijing
-├── notebooks/experiment.ipynb # 32-cell Jupyter notebook replicating run.py
+├── experiment.ipynb          # 32-cell Jupyter notebook replicating run.py
 ├── run.py                    # Single entry point
 ├── tests/test_solvers.py     # 10 tests (graph + solver correctness)
 └── docs/
@@ -98,7 +98,7 @@ Cao_SOTA_MP/
     ├── spec.md               # Primary spec (interfaces, acceptance criteria)
     ├── todo.md               # Granular actionable tasks + completed history
     ├── paper.html            # Paper reading notes (Chinese)
-    ├── report/               # 13 numbered HTML reports + index.html
+    ├── report/               # 17 numbered HTML reports + index.html
     └── handover/             # Handover documents (001, 002)
 ```
 
@@ -123,7 +123,7 @@ run.py  →  for each (repeat, OD pair, alpha):
 | Solver | SCIP 6.2.1 (pyscipopt) | Stable open-source; HiGHS had memory corruption |
 | big-M | Per-sample: Mᵢ = max(1, ΣⱼW[i,j]-τ) | 200–8000× tighter than fixed 1e6 |
 | Candidate paths | 4 sources, max 1000, deduplicated | Wide coverage without explosion |
-| Metrics | Path-match + tie-aware (\|gap\| ≤ 1/N) | Path-match alone misleading when punctuality differences < sampling error |
+| Metrics | tie-aware as primary, path-match as secondary (\|gap\| ≤ 1/N) | Path-match alone misleading when punctuality differences < sampling error |
 | Data/solve separation | `data/generate.py` → data dirs → `run.py` | Isolates topology from solver issues |
 | Venv | Shared at RSP/ level (uv + pyproject.toml) | Single venv for all RSP subprojects |
 
@@ -159,8 +159,12 @@ def solve_xxx(network: RoadNetwork, W: np.ndarray,      # W: N × |L| travel tim
 | 11 | 11_project_audit | — | Comprehensive audit (4 issues found) |
 | 12 | 12_beijing_highvar | Beijing | **High-CV Beijing** (0.775, Phase 9 complete) |
 | 13 | 13_maintenance_followup | — | Maintenance alignment, metadata traceability, next-task ordering |
+| 14 | 14_deadline_protocol_audit | — | small dataset protocol audit: heuristic vs exact deadline |
+| 15 | 15_full_seed42_notebook_rerun | Artificial | full/seed42 notebook + SCIP rerun |
+| 16 | 16_full_seed42_detailed_review | Artificial | detailed metrics review, follow-up plan, project status audit |
+| 17 | 17_full_protocol_seed42_1000jobs | Artificial | 1000-job large-scale validation on full seed42 |
 
-**Latest result reports in this repo:** 09 (artificial), 12 (Beijing high-CV).
+**Latest result reports in this repo:** 16/17 (artificial), 12 (Beijing high-CV).
 
 Open `docs/report/index.html` for a navigable index with evolution table.
 
@@ -175,15 +179,17 @@ Open `docs/report/index.html` for a navigable index with evolution table.
 |--------|--------|
 | Beijing high-CV experiment | **Done.** CV=0.775, ILP 100%, Dijkstra 71.1%, MILP 68.9% |
 | Report 12 | New HTML report for Beijing high-CV results |
-| Jupyter notebook | `notebooks/experiment.ipynb` — 32 cells, replicate run.py workflow |
+| Jupyter notebook | `experiment.ipynb` — 32 cells, replicate run.py workflow |
 | Documentation normalization | README doc structure, CLAUDE.md rules, todo.md moved to docs/ |
 | Git hygiene | Removed redundant `Cao_SOTA_MP/.gitignore`, added `cache/` to parent |
-| Report index | Updated: 13 reports, including maintenance follow-up and report 12 evolution row |
+| Report index | Updated: 17 reports, including detailed rerun review and 1000-job validation |
 | Visualization / tests / PuLP | Fig.2-style plots upgraded, deadline tests added, PuLP warning workaround complete |
 
 ## 12. Pending Work (Priority Order)
 
 ### Medium
+- **Metric policy update** — Use tie-aware as the default accuracy headline in summaries and plots; keep path-match as structural diagnostic
+- **Threshold sensitivity** — Compare `1/N` with one stricter global tolerance before changing the default rule
 - **Multi-seed significance** — Only if a paper-grade statistical section is needed
 
 ### Low
@@ -222,6 +228,6 @@ Open `docs/report/index.html` for a navigable index with evolution table.
 | Plan | `docs/plan.md` | Phases, key decisions, report inventory |
 | Changelog | `docs/change.md` | Chronological, newest-first |
 | TODO | `docs/todo.md` | Tasks + completed history + quick commands |
-| Report index | `docs/report/index.html` | 12 reports with evolution table |
+| Report index | `docs/report/index.html` | 17 reports with evolution table |
 | CLAUDE.md | `../CLAUDE.md` | AI assistant instructions (RSP level) |
 | Handover 001 | `docs/handover/001-project-handover.md` | Previous handover (2026-05-23) |

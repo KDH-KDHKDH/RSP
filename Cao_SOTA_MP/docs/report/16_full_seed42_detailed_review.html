@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>实验报告 16: Full Seed42 详细复盘与状态审计 — Cao SOTA MP</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 980px; margin: 0 auto; }
+h1 { font-size: 1.85rem; margin-bottom: 0.5rem; color: var(--accent); }
+h2 { font-size: 1.35rem; margin: 2.2rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 1.08rem; margin: 1.4rem 0 0.5rem; color: var(--accent); }
+p, li { margin-bottom: 0.6rem; }
+ul, ol { padding-left: 1.5rem; }
+.meta { color: var(--muted); font-size: 0.92rem; margin-bottom: 2rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+.good { background: #e8f5e9; border-left: 4px solid #43a047; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.info { background: #eff6ff; border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.8rem; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; }
+tr:nth-child(even) { background: #f8fafc; }
+.code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>实验报告 16: Full Seed42 详细复盘与状态审计</h1>
+<div class="meta">
+    <strong>日期:</strong> 2026-05-24 |
+    <strong>数据:</strong> <span class="code">data/full/seed42</span> |
+    <strong>入口:</strong> <span class="code">experiment.ipynb</span> |
+    <strong>求解器:</strong> SCIP |
+    <strong>结果目录:</strong> <span class="code">results/full_protocol_seed42_scip/</span>
+</div>
+
+<div class="good">
+    <strong>一句话结论：</strong>
+    当前 full/seed42 的 notebook rerun 不只是“跑通了”，而且结果结构清晰、主结论稳定、求解状态完整。
+    ILP 在 1000/1000 个 job 上保持路径匹配 100%；Dijkstra 在路径匹配上优于 MILP（75.2% vs 63.7%），
+    但 MILP 在 tie-aware 指标上反超 Dijkstra（90.2% vs 88.3%）。
+</div>
+
+<h2>1. 实验背景与定位</h2>
+<div class="card">
+    <p>这次实验的作用，不是首次发现新结论，而是做一次更可复核的 rerun：</p>
+    <ol>
+        <li>入口切换到 notebook-first；</li>
+        <li>实验逻辑统一复用 <span class="code">run_experiment()</span>；</li>
+        <li>求解时间统一改成 wall-clock；</li>
+        <li>为后续协议审计、多 seed 扩展和项目交接，提供一份细化版结果总结。</li>
+    </ol>
+    <p>因此，这份报告关注的不只是结果值，还包括结果间的关系、指标之间的解释张力，以及项目接下来应该做什么。</p>
+</div>
+
+<h2>2. 实验设置</h2>
+<table>
+<tr><th>项</th><th>值</th></tr>
+<tr><td>路网</td><td>65 节点，123 边，人工高连通有向图</td></tr>
+<tr><td>seed</td><td>42</td></tr>
+<tr><td>行程时间样本</td><td>每边 500 个 lognormal 样本</td></tr>
+<tr><td>CV 水平</td><td>中位数约 0.83</td></tr>
+<tr><td>重复</td><td>10</td></tr>
+<tr><td>OD 对</td><td>20</td></tr>
+<tr><td>α</td><td>0.5, 0.6, 0.7, 0.8, 0.9</td></tr>
+<tr><td>总 job</td><td>1000</td></tr>
+<tr><td>deadline mode</td><td>heuristic</td></tr>
+<tr><td>candidate paths</td><td>max 1000</td></tr>
+<tr><td>solver backend</td><td>SCIP</td></tr>
+<tr><td>time limit</td><td>60s</td></tr>
+</table>
+
+<h2>3. 总体指标</h2>
+<table>
+<tr><th>方法</th><th>Path-Match</th><th>Tie-Aware</th><th>Mean Punctuality</th><th>Mean Solve Time</th><th>Mean Late Count</th></tr>
+<tr><td><strong>ILP</strong></td><td><strong>100.0%</strong></td><td><strong>100.0%</strong></td><td><strong>0.9785</strong></td><td>0.3743s</td><td><strong>10.742</strong></td></tr>
+<tr><td>Dijkstra</td><td>75.2%</td><td>88.3%</td><td>0.9778</td><td>0.0004s</td><td>11.092</td></tr>
+<tr><td>MILP</td><td>63.7%</td><td><strong>90.2%</strong></td><td>0.9779</td><td>0.1917s</td><td>11.044</td></tr>
+</table>
+
+<div class="info">
+    <strong>第一层观察：</strong>
+    从“找没找对同一条路径”看，Dijkstra 明显比 MILP 更接近 ILP；但从“即使路径不同，概率是否几乎等价”看，MILP 又反过来更接近 ILP。
+</div>
+
+<h2>4. 指标分析</h2>
+<h3>4.1 Path-Match 与 Tie-Aware 的关系</h3>
+<div class="card">
+    <p>这轮结果最值得强调的，不是 ILP=100% 本身，而是两种 baseline 的排序在不同指标下发生了反转：</p>
+    <ul>
+        <li>路径匹配：Dijkstra 75.2% > MILP 63.7%</li>
+        <li>tie-aware：MILP 90.2% > Dijkstra 88.3%</li>
+    </ul>
+    <p>进一步拆分：</p>
+    <ul>
+        <li>MILP 有 36.3% 的样本路径不同于 ILP，其中 26.5% 虽然路径不同，但仍在采样误差内等价；只有 9.8% 真正“不同且不等价”。</li>
+        <li>Dijkstra 有 24.8% 的样本路径不同于 ILP，其中仅 13.1% 仍在采样误差内等价；11.7% 是“不同且不等价”。</li>
+    </ul>
+    <p>换句话说，Dijkstra 更常走到和 ILP 一样的路径，但 MILP 更常走到“不同但几乎一样好”的路径。</p>
+</div>
+
+<h3>4.2 Objective Gap 的含义</h3>
+<table>
+<tr><th>方法</th><th>mean gap</th><th>median gap</th><th>max gap</th><th>gap=0 比例</th></tr>
+<tr><td>Dijkstra</td><td>0.000700</td><td>0.0000</td><td>0.040</td><td>88.2%</td></tr>
+<tr><td>MILP</td><td>0.000604</td><td>0.0000</td><td>0.034</td><td>90.1%</td></tr>
+</table>
+
+<div class="good">
+    <strong>第二层观察：</strong>
+    两个 baseline 的平均 objective gap 都小于 0.001，说明大多数失败并不是“偏得很离谱”，而是“在一个非常平坦的最优附近区域里选了另一条路”。
+</div>
+
+<h3>4.3 路径特征分析</h3>
+<table>
+<tr><th>方法</th><th>Mean Path Length</th><th>Mean Travel Time</th><th>Mean Delay Sum</th><th>Mean Max Delay</th></tr>
+<tr><td>Dijkstra</td><td><strong>6.270</strong></td><td><strong>316.26</strong></td><td>1318.35</td><td>344.45</td></tr>
+<tr><td>ILP</td><td>6.422</td><td>324.99</td><td>1249.64</td><td>328.77</td></tr>
+<tr><td>MILP</td><td>6.530</td><td>329.86</td><td><strong>1188.96</strong></td><td><strong>281.02</strong></td></tr>
+</table>
+
+<div class="warn">
+    <strong>这里有一个很容易误读的点：</strong>
+    MILP 的平均 <span class="code">delay_sum</span> 和 <span class="code">max_delay</span> 反而最好，这恰恰说明它忠实地优化了自己的目标函数；
+    但它优化的是“迟到总时长”，不是“迟到次数”。这和论文原理完全一致，也解释了为什么 MILP 会在 path-match 上输给 ILP。
+</div>
+
+<h2>5. 实验结果分析</h2>
+<h3>5.1 α 趋势</h3>
+<table>
+<tr><th>α</th><th>Dijkstra Path-Match</th><th>MILP Path-Match</th><th>Dijkstra Tie-Aware</th><th>MILP Tie-Aware</th><th>ILP Time</th></tr>
+<tr><td>0.5</td><td>82.5%</td><td>67.5%</td><td>92.5%</td><td>91.0%</td><td>0.6786s</td></tr>
+<tr><td>0.6</td><td>80.5%</td><td>65.5%</td><td>90.5%</td><td>92.5%</td><td>0.4810s</td></tr>
+<tr><td>0.7</td><td>73.5%</td><td>61.5%</td><td>88.5%</td><td>90.5%</td><td>0.3212s</td></tr>
+<tr><td>0.8</td><td>69.5%</td><td>65.5%</td><td>86.5%</td><td>90.0%</td><td>0.2189s</td></tr>
+<tr><td>0.9</td><td>70.0%</td><td>58.5%</td><td>83.5%</td><td>87.0%</td><td>0.1719s</td></tr>
+</table>
+
+<p>三个清晰趋势：</p>
+<ol>
+    <li>α 越大，ILP 求解越快，0.5 到 0.9 之间 ILP 平均时间下降接近 4 倍。</li>
+    <li>α 越大，路径匹配整体更差，尤其 MILP 在 α=0.9 下降到 58.5%。</li>
+    <li>tie-aware 也随 α 增大而下降，说明不仅路径在变，概率差距也开始超出采样误差。</li>
+</ol>
+
+<h3>5.2 repeat 稳定性</h3>
+<div class="card">
+    <p>按 repeat 看，ILP 始终稳定在 100%。</p>
+    <p>Dijkstra 路径匹配在 0.54 到 0.84 之间波动，MILP 在 0.49 到 0.73 之间波动。</p>
+    <p>这种波动幅度说明：当前单 seed 结论虽然方向稳定，但如果要写成更严谨的统计结论，确实应该进入多 seed 实验阶段。</p>
+</div>
+
+<h3>5.3 求解状态</h3>
+<div class="good">
+    1000/1000 个 ILP job 均为 Optimal，reference availability = 100%。<br>
+    这意味着本次 full rerun 没有因为 time limit 或 solver status 问题丢掉样本，实验统计是完整的。
+</div>
+
+<h3>5.4 Worst Cases</h3>
+<div class="card">
+    <p><span class="code">worst_cases.csv</span> 一共覆盖 70 个 unique jobs，都是 “MILP 准时概率低于 Dijkstra” 的样本。</p>
+    <p>其中：</p>
+    <ul>
+        <li>α=0.5: 13 个</li>
+        <li>α=0.6: 11 个</li>
+        <li>α=0.7: 16 个</li>
+        <li>α=0.8: 14 个</li>
+        <li>α=0.9: 16 个</li>
+    </ul>
+    <p>这些样本里，MILP 最大 objective gap 为 0.034，Dijkstra 最大 objective gap 为 0.040。说明“Dijkstra 偶尔会更好”这个现象存在，但幅度整体有限。</p>
+</div>
+
+<h2>6. 之后的计划和想法</h2>
+<div class="info">
+    <p>基于这轮结果，我认为后续工作优先级应该是：</p>
+    <ol>
+        <li><strong>多 seed 统计显著性实验</strong>：这是当前最该做的，能把“结论稳定”从观察提升成统计层面的说法。</li>
+        <li><strong>中等规模 deadline 审计集</strong>：small 数据集上 heuristic 与 exact 完全一致，但这不足以说明大图也一致。值得构造一个更容易漏路径的中图做 protocol audit。</li>
+        <li><strong>真实轨迹数据接入</strong>：如果目标是进一步逼近论文北京实验设定，这一步比继续微调人工网络更有价值。</li>
+    </ol>
+    <p>我不建议下一步优先再改 solver 或 big-M，因为当前 ILP 的正确性和效率已经处在一个很合理的位置，瓶颈不在求解器层。</p>
+</div>
+
+<h2>7. 项目状态简单审计</h2>
+<table>
+<tr><th>维度</th><th>状态</th><th>判断</th></tr>
+<tr><td>核心算法实现</td><td>稳定</td><td>ILP/MILP/Dijkstra 主逻辑一致，full rerun 没有暴露新算法错误</td></tr>
+<tr><td>实验协议</td><td>明显改善</td><td>deadline mode、reference_available、wall-clock 计时都已补齐</td></tr>
+<tr><td>Notebook 入口</td><td>可用</td><td>当前结果已经能直接支撑正式报告；表格展示问题已修</td></tr>
+<tr><td>结果可复核性</td><td>较好</td><td>结构化输出文件齐全，status 统计完整</td></tr>
+<tr><td>剩余主要风险</td><td>中等</td><td>多 seed 缺失；heuristic deadline 在更复杂图上的偏差仍未完全量化</td></tr>
+</table>
+
+<div class="warn">
+    <strong>审计结论：</strong>
+    当前项目不处于“算法未定型”的状态，而处于“核心实现稳定、实验结论需要进一步统计加固”的状态。
+    接下来工作的重点应放在实验覆盖面和结果解释强度，而不是继续频繁改动求解器本体。
+</div>
+
+<div class="meta" style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border);">
+    相关结果文件：<span class="code">results/full_protocol_seed42_scip/results.csv</span>,
+    <span class="code">summary.csv</span>,
+    <span class="code">status_counts.csv</span>,
+    <span class="code">path_match_by_alpha.csv</span>,
+    <span class="code">tie_aware_by_alpha.csv</span>,
+    <span class="code">worst_cases.csv</span>
+</div>
+
+</body>
+</html>

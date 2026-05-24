@@ -43,7 +43,8 @@ def load_experiment_data(data_dir: str | Path) -> dict:
     }
 
 
-def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataFrame:
+def run_experiment(config: dict, data_dir: str | Path | None = None,
+                   return_aux: bool = False) -> pd.DataFrame | tuple[pd.DataFrame, dict]:
     """Run the full comparison experiment.
 
     If data_dir is provided, loads pre-generated data from disk.
@@ -52,6 +53,7 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
     exp_cfg = config.get("experiment", {})
     solver_cfg = config.get("solver", {})
     cp_cfg = config.get("candidate_paths", {})
+    deadline_cfg = config.get("deadline", {})
 
     alphas = exp_cfg.get("alphas", [0.5, 0.6, 0.7, 0.8, 0.9])
     backend = solver_cfg.get("backend", "CBC")
@@ -59,6 +61,8 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
     time_limit = int(solver_cfg.get("time_limit", 60))
     num_repeats = exp_cfg.get("num_repeats", 10)
     max_candidate_paths = cp_cfg.get("max_paths", 1000)
+    deadline_mode = deadline_cfg.get("mode", "heuristic")
+    deadline_enumeration_cutoff = int(deadline_cfg.get("enumeration_cutoff", 15))
     base_seed = config.get("network", {}).get("seed", 42)
 
     if data_dir:
@@ -89,7 +93,7 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
 
     print(f"  Network: {network.num_nodes} nodes, {network.num_edges} edges")
     print(f"  OD pairs: {len(od_pairs)}, Repeats: {num_repeats}, Alphas: {alphas}")
-    print(f"  Candidate paths: max {max_candidate_paths}")
+    print(f"  Candidate paths: max {max_candidate_paths}, deadline mode={deadline_mode}")
 
     results = []
     deadline_diag_by_alpha: dict[float, list[dict]] = {a: [] for a in alphas}
@@ -108,6 +112,8 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                 tau, tau_diag = compute_deadline(
                     W, network, o, d, alpha,
                     max_candidate_paths=max_candidate_paths,
+                    mode=deadline_mode,
+                    enumeration_cutoff=deadline_enumeration_cutoff,
                     seed=base_seed + repeat * 100 + oi,
                     return_diagnostics=True,
                 )
@@ -117,20 +123,16 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                 ilp_result = solve_ilp(network, W, o, d, tau, big_m, backend, time_limit)
                 t_ilp = time.perf_counter() - t0
                 ilp_status = ilp_result["status"]
-
-                if ilp_status != "Optimal":
-                    print(f"  [{job_idx}/{total_jobs}] R{repeat+1} OD{oi+1} α={alpha} "
-                          f"ILP={ilp_status} ⚠ SKIP")
-                    continue
-                ilp_path = ilp_result["path_x"]
-                ilp_prob = ilp_result["punctuality_prob"]
+                reference_available = ilp_status == "Optimal"
+                ilp_path = ilp_result["path_x"] if reference_available else None
+                ilp_prob = ilp_result["punctuality_prob"] if reference_available else np.nan
                 ilp_stats = _compute_path_stats(W, ilp_path, tau)
 
                 t0 = time.perf_counter()
                 milp_result = solve_milp(network, W, o, d, tau, backend, time_limit)
                 t_milp = time.perf_counter() - t0
                 milp_path = milp_result["path_x"] if milp_result["status"] == "Optimal" else None
-                milp_prob = milp_result["punctuality_prob"] if milp_result["status"] == "Optimal" else None
+                milp_prob = milp_result["punctuality_prob"] if milp_result["status"] == "Optimal" else np.nan
 
                 t0 = time.perf_counter()
                 dij_result = solve_dijkstra(network, W, o, d, tau)
@@ -139,14 +141,20 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                 dij_prob = dij_result["punctuality_prob"]
 
                 # Shared fields for all 3 methods
-                ilp_gap = 0.0
-                ilp_tie_ok = True
-
-                gap_milp = ilp_prob - milp_prob if (ilp_prob is not None and milp_prob is not None) else None
-                milp_tie_ok = abs(gap_milp) <= 1.0 / N if gap_milp is not None else None
-
-                gap_dij = ilp_prob - dij_prob if (ilp_prob is not None and dij_prob is not None) else None
-                dij_tie_ok = abs(gap_dij) <= 1.0 / N if gap_dij is not None else None
+                if reference_available:
+                    ilp_gap = 0.0
+                    ilp_tie_ok = True
+                    gap_milp = ilp_prob - milp_prob if not np.isnan(milp_prob) else np.nan
+                    milp_tie_ok = abs(gap_milp) <= 1.0 / N if not np.isnan(gap_milp) else np.nan
+                    gap_dij = ilp_prob - dij_prob if not np.isnan(dij_prob) else np.nan
+                    dij_tie_ok = abs(gap_dij) <= 1.0 / N if not np.isnan(gap_dij) else np.nan
+                else:
+                    ilp_gap = np.nan
+                    ilp_tie_ok = np.nan
+                    gap_milp = np.nan
+                    milp_tie_ok = np.nan
+                    gap_dij = np.nan
+                    dij_tie_ok = np.nan
 
                 milp_stats = _compute_path_stats(W, milp_path, tau)
                 dij_stats = _compute_path_stats(W, dij_path, tau)
@@ -155,7 +163,7 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                     "repeat": repeat, "od_idx": oi, "origin": o, "dest": d,
                     "alpha": alpha, "method": "ILP",
                     "punctuality_prob": ilp_prob,
-                    "correct": True,
+                    "correct": True if reference_available else np.nan,
                     "objective_gap": ilp_gap,
                     "tie_aware_correct": ilp_tie_ok,
                     "late_count": ilp_stats["late_count"],
@@ -163,13 +171,17 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                     "max_delay": ilp_stats["max_delay"],
                     "path_length": ilp_stats["path_length"],
                     "mean_time": ilp_stats["mean_time"],
+                    "status": ilp_status,
+                    "reference_available": reference_available,
+                    "reference_status": ilp_status,
+                    "deadline_mode": deadline_mode,
                     "solve_time": ilp_result["solve_time"],
                 })
                 results.append({
                     "repeat": repeat, "od_idx": oi, "origin": o, "dest": d,
                     "alpha": alpha, "method": "MILP",
                     "punctuality_prob": milp_prob,
-                    "correct": _path_match(milp_path, ilp_path),
+                    "correct": _path_match(milp_path, ilp_path) if reference_available else np.nan,
                     "objective_gap": gap_milp,
                     "tie_aware_correct": milp_tie_ok,
                     "late_count": milp_stats["late_count"],
@@ -177,13 +189,17 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                     "max_delay": milp_stats["max_delay"],
                     "path_length": milp_stats["path_length"],
                     "mean_time": milp_stats["mean_time"],
+                    "status": milp_result["status"],
+                    "reference_available": reference_available,
+                    "reference_status": ilp_status,
+                    "deadline_mode": deadline_mode,
                     "solve_time": milp_result["solve_time"],
                 })
                 results.append({
                     "repeat": repeat, "od_idx": oi, "origin": o, "dest": d,
                     "alpha": alpha, "method": "Dijkstra",
                     "punctuality_prob": dij_prob,
-                    "correct": _path_match(dij_path, ilp_path),
+                    "correct": _path_match(dij_path, ilp_path) if reference_available else np.nan,
                     "objective_gap": gap_dij,
                     "tie_aware_correct": dij_tie_ok,
                     "late_count": dij_stats["late_count"],
@@ -191,6 +207,10 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                     "max_delay": dij_stats["max_delay"],
                     "path_length": dij_stats["path_length"],
                     "mean_time": dij_stats["mean_time"],
+                    "status": dij_result["status"],
+                    "reference_available": reference_available,
+                    "reference_status": ilp_status,
+                    "deadline_mode": deadline_mode,
                     "solve_time": dij_result["solve_time"],
                 })
 
@@ -199,8 +219,9 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
                 avg_per_job = elapsed / job_idx
                 eta = avg_per_job * (total_jobs - job_idx)
                 eta_str = f"{eta/60:.0f}m{eta%60:.0f}s" if eta < 3600 else f"{eta/3600:.1f}h"
+                ref_note = "" if reference_available else " ref=missing"
                 print(f"  [{job_idx}/{total_jobs}] R{repeat+1} OD{oi+1} α={alpha} | "
-                      f"ILP={t_ilp:.1f}s ({ilp_status}) MILP={t_milp:.1f}s Dij={t_dij:.3f}s | "
+                      f"ILP={t_ilp:.1f}s ({ilp_status}) MILP={t_milp:.1f}s Dij={t_dij:.3f}s{ref_note} | "
                       f"elapsed={elapsed/60:.1f}m ETA={eta_str}")
 
         t_repeat_elapsed = time.perf_counter() - t_repeat
@@ -228,6 +249,12 @@ def run_experiment(config: dict, data_dir: str | Path | None = None) -> pd.DataF
         if alpha >= 0.9 and cand_mean > 0.99:
             print(f"    ⚠ deadline too loose at α={alpha}: candidate path punctuality mean > 0.99, low discrimination")
 
+    if return_aux:
+        return df, {
+            "deadline_diag_by_alpha": deadline_diag_by_alpha,
+            "alphas": alphas,
+            "deadline_mode": deadline_mode,
+        }
     return df
 
 

@@ -160,6 +160,18 @@ def print_summary(df: pd.DataFrame):
     """Print summary table (like Table I in paper)."""
     print("\n=== Results Summary ===\n")
 
+    if "reference_available" in df.columns:
+        ilp_rows = df[df["method"] == "ILP"]
+        if not ilp_rows.empty:
+            ref_rate = ilp_rows["reference_available"].mean()
+            print(f"Reference availability (ILP Optimal): {ref_rate:.1%}")
+
+    if "status" in df.columns:
+        print("\nStatus counts by method:")
+        status_counts = df.groupby(["method", "status"]).size()
+        for (method, status), count in status_counts.items():
+            print(f"  {method:10s} {status:12s}: {count}")
+
     # Accuracy by method (exact path match)
     if "correct" in df.columns and df["correct"].notna().any():
         acc = df.groupby("method")["correct"].mean()

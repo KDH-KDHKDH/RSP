@@ -1,5 +1,7 @@
 """ILP exact solver for the punctuality problem (core algorithm)."""
 
+import time
+
 import numpy as np
 import pulp
 from .graph import RoadNetwork
@@ -82,17 +84,20 @@ def solve_ilp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int
 
     # Solve
     solver = _get_solver(solver_name, time_limit)
+    t0 = time.perf_counter()
     try:
         prob.solve(solver)
     except Exception as e:
+        elapsed = time.perf_counter() - t0
         return {"path_x": None, "lateness_count": None,
-                "punctuality_prob": None, "status": f"SolverError: {e}", "solve_time": 0.0}
+                "punctuality_prob": None, "status": f"SolverError: {e}", "solve_time": elapsed}
+    elapsed = time.perf_counter() - t0
 
     # Extract results
     status = pulp.LpStatus[prob.status]
     if status != "Optimal":
         return {"path_x": None, "lateness_count": None,
-                "punctuality_prob": None, "status": status, "solve_time": prob.solutionTime}
+                "punctuality_prob": None, "status": status, "solve_time": elapsed}
 
     path_x = np.array([v.varValue for v in x])
     lateness_count = sum(v.varValue for v in iota)
@@ -103,7 +108,7 @@ def solve_ilp(network: RoadNetwork, W: np.ndarray, origin: int, destination: int
         "lateness_count": int(lateness_count),
         "punctuality_prob": punctuality_prob,
         "status": status,
-        "solve_time": prob.solutionTime,
+        "solve_time": elapsed,
     }
 
 

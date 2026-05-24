@@ -8,11 +8,20 @@
 
 Phase 1-9 全部完成。ILP=100% 精确解已复现。10/10测试通过。两个路网验证完成（人工65节点 + 北京587节点）。
 
-**待推进:** 多 seed 统计显著性实验与真实轨迹数据扩展（按需要推进）。
+**待推进:** 评估口径切换（tie-aware 主准确率）、多 seed 统计显著性实验与真实轨迹扩展。论文协议对齐和 notebook-first 入口已落地。
 
 ## 工作流程
 
 ```bash
+# Step 0: 优先使用 Notebook 入口
+# 在 VS Code / Jupyter 中打开:
+#   Cao_SOTA_MP/experiment.ipynb
+#
+# Notebook 用于:
+# - 单个 case 调试
+# - 小规模 exact deadline 审计
+# - 批量实验的交互式运行
+#
 # Step 1: 生成数据
 uv run python Cao_SOTA_MP/data/generate.py --preset small
 uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42
@@ -76,7 +85,18 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 - [x] 新增维护跟进报告，解释历史报告不可变与报告关系
 - [x] Candidate path / deadline 逻辑补单元测试
 - [x] PuLP 4.0 warning workaround，消除 deprecation warning
-- [ ] 如需统计显著性，再做多 seed 实验
+
+### Protocol Alignment: 论文协议对齐
+- [x] `deadline.mode`：支持 `heuristic` / `exact`，小图审计时按论文定义枚举路径计算 τ
+- [x] ILP 非最优样本不再 `skip`，而是完整记录 `status` / `reference_available`
+- [x] Notebook 作为优先运行入口，配置项覆盖上述协议开关，并复用 `run_experiment()`
+
+### Expansion
+- [ ] 评估口径切换：以 tie-aware accuracy 作为主准确率，path-match 降为辅助诊断
+- [ ] 图表切换：accuracy 曲线和总表默认展示 tie-aware accuracy，path-match 作为附图/附表
+- [ ] tie-aware 阈值敏感性分析：保留 `|gap| ≤ 1/N` 作为主标准，补充一个统一更严格阈值（如 `0.5/N`）对比
+- [ ] 多 seed 统计显著性实验
+- [ ] 真实轨迹数据接入（如 T-Drive）
 
 ## 报告命名规则
 
@@ -98,6 +118,9 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 | 11 | `11_project_audit.html` | 项目全面审计报告 |
 | 12 | `12_beijing_highvar.html` | 北京路网高方差阶段的最新结果 (CV=0.775) |
 | 13 | `13_maintenance_followup.html` | 维护/审计对齐报告 + 后续任务排程 |
+| 14 | `14_deadline_protocol_audit.html` | small 数据集协议审计：heuristic 与 exact deadline 对照 |
+| 15 | `15_full_seed42_notebook_rerun.html` | full/seed42 在 notebook + SCIP 下的正式实验报告 |
+| 16 | `16_full_seed42_detailed_review.html` | full/seed42 详细指标分析、计划与项目状态审计 |
 
 ## 关键决策
 
@@ -109,4 +132,4 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 | 数据流 | 生成与求解分离 | 可预检查图性质，隔离问题 |
 | 接口设计 | --data-dir / --seed | 保留多seed扩展能力，当前聚焦单seed |
 | 北京路网 | 方案C: OSM拓扑 + 属性驱动模拟 | 拓扑真实, 参数有物理含义, 可复现 |
-| 评估指标 | 路径匹配 + tie-aware (|gap| ≤ 1/N) | 路径匹配严格但易受采样误差影响, tie-aware更合理 |
+| 评估指标 | tie-aware 为主 + 路径匹配为辅 | tie-aware更接近“概率上是否等价”的问题；path-match保留作结构诊断 |

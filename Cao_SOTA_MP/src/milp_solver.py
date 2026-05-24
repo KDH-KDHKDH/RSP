@@ -1,5 +1,7 @@
 """MILP approximate solver (ℓ₁-norm relaxation) for the punctuality problem."""
 
+import time
+
 import numpy as np
 import pulp
 from .graph import RoadNetwork
@@ -49,18 +51,21 @@ def solve_milp(network: RoadNetwork, W: np.ndarray, origin: int, destination: in
 
     # Solve
     solver = _get_solver(solver_name, time_limit)
+    t0 = time.perf_counter()
     try:
         prob.solve(solver)
     except Exception as e:
+        elapsed = time.perf_counter() - t0
         return {"path_x": None, "lateness_count": None,
                 "punctuality_prob": None,
-                "status": f"SolverError: {e}", "solve_time": 0.0}
+                "status": f"SolverError: {e}", "solve_time": elapsed}
+    elapsed = time.perf_counter() - t0
 
     status = pulp.LpStatus[prob.status]
     if status != "Optimal":
         return {"path_x": None, "lateness_count": None,
                 "punctuality_prob": None,
-                "status": status, "solve_time": prob.solutionTime}
+                "status": status, "solve_time": elapsed}
 
     path_x = np.array([v.varValue for v in x])
 
@@ -74,5 +79,5 @@ def solve_milp(network: RoadNetwork, W: np.ndarray, origin: int, destination: in
         "lateness_count": int(lateness_count),
         "punctuality_prob": punctuality_prob,
         "status": status,
-        "solve_time": prob.solutionTime,
+        "solve_time": elapsed,
     }

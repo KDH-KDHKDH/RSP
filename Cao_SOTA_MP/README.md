@@ -51,7 +51,7 @@ All solvers take `(network, W, origin, destination, tau)` and return `{path_x, l
 | Dijkstra | 71.1% | 90.0% | 0.004s |
 | MILP | 68.9% | 88.9% | 7.7s |
 
-ILP = 100% accuracy reproduced. Tie-aware accuracy shows baselines closer to optimal than strict path-matching suggests (objective_gap < 0.001 in both networks).
+ILP = 100% accuracy reproduced. Tie-aware accuracy shows baselines closer to optimal than strict path-matching suggests (objective_gap < 0.001 in both networks). Current maintenance direction is to use tie-aware accuracy as the primary comparison metric and keep path-match as a secondary structural diagnostic.
 For the latest results in this repo, start with report 09 (artificial network) and report 12 (Beijing high-CV).
 
 ## Project Structure
@@ -89,13 +89,13 @@ uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --dat
 - **ILP is ground-truth** — no path enumeration needed for accuracy evaluation
 - **Data generation is separate from solving** — `data/generate.py` produces self-contained directories
 - **SCIP solver** (pyscipopt 6.2.1) — open-source, stable (HiGHS has memory corruption bug)
-- **Two accuracy metrics**: strict path-vector match + tie-aware (|gap| ≤ 1/N)
+- **Two accuracy metrics**: tie-aware as primary comparison + strict path-vector match as secondary structural diagnostic
 - **Per-sample tight big-M** — Mᵢ = max(1, ΣⱼW[i,j]-τ), 200-8000× tighter than fixed 1e6
 - **Shared venv** at repo root — managed by `uv` with `pyproject.toml`
 
 ## Reports
 
-See `docs/report/index.html` for all 13 reports, including the latest maintenance follow-up.
+See `docs/report/index.html` for all 17 reports, including the latest detailed rerun review and large-scale validation report.
 
 ## Documentation Structure
 

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>实验报告 15: Full Seed42 Notebook Rerun (SCIP) — Cao SOTA MP</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 960px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--accent); }
+h2 { font-size: 1.3rem; margin: 2rem 0 0.8rem; padding-bottom: 0.3rem; border-bottom: 2px solid var(--accent); }
+p, li { margin-bottom: 0.6rem; }
+ul, ol { padding-left: 1.5rem; }
+.meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+.good { background: #e8f5e9; border-left: 4px solid #43a047; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.info { background: #eff6ff; border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.8rem; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; }
+tr:nth-child(even) { background: #f8fafc; }
+.code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>实验报告 15: Full Seed42 Notebook Rerun (SCIP)</h1>
+<div class="meta">
+    <strong>日期:</strong> 2026-05-24 |
+    <strong>入口:</strong> <span class="code">experiment.ipynb</span> |
+    <strong>数据:</strong> <span class="code">data/full/seed42</span> |
+    <strong>求解器:</strong> SCIP |
+    <strong>计时口径:</strong> wall-clock
+</div>
+
+<div class="good">
+    <strong>核心结论：</strong>当前 notebook rerun 在 full seed42 数据集上复现了既有的主结论：
+    ILP 路径匹配 100%，Dijkstra 75.2%，MILP 63.7%；tie-aware 下 MILP 90.2% 略高于 Dijkstra 88.3%。
+    1000/1000 个 ILP job 均为 <span class="code">Optimal</span>，reference availability = 100%。
+</div>
+
+<h2>1. 实验设置</h2>
+<table>
+<tr><th>项</th><th>值</th></tr>
+<tr><td>路网</td><td>65 节点，123 边，seed42</td></tr>
+<tr><td>行程时间样本</td><td>N = 500</td></tr>
+<tr><td>重复</td><td>10</td></tr>
+<tr><td>OD 对</td><td>20</td></tr>
+<tr><td>α</td><td>0.5, 0.6, 0.7, 0.8, 0.9</td></tr>
+<tr><td>总 job 数</td><td>1000</td></tr>
+<tr><td>deadline mode</td><td>heuristic</td></tr>
+<tr><td>candidate paths</td><td>max 1000</td></tr>
+<tr><td>输出目录</td><td><span class="code">results/full_protocol_seed42_scip/</span></td></tr>
+</table>
+
+<h2>2. 总体结果</h2>
+<table>
+<tr><th>方法</th><th>Path-Match</th><th>Tie-Aware</th><th>平均准时概率</th><th>平均求解时间</th></tr>
+<tr><td><strong>ILP</strong></td><td><strong>100.0%</strong></td><td><strong>100.0%</strong></td><td><strong>0.9785</strong></td><td>0.3743s</td></tr>
+<tr><td>Dijkstra</td><td>75.2%</td><td>88.3%</td><td>0.9778</td><td>0.0004s</td></tr>
+<tr><td>MILP</td><td>63.7%</td><td><strong>90.2%</strong></td><td>0.9779</td><td>0.1917s</td></tr>
+</table>
+
+<div class="info">
+    这次 rerun 的路径匹配和 tie-aware 指标与既有 seed42 高方差结论一致。和早期报告不同的是，本次求解时间统一采用 wall-clock 计时，因此 ILP / MILP 时间略高于旧报告中直接取 solver 内部时间字段的数值。
+</div>
+
+<h2>3. 求解状态审计</h2>
+<table>
+<tr><th>方法</th><th>Status</th><th>Count</th></tr>
+<tr><td>ILP</td><td>Optimal</td><td>1000</td></tr>
+<tr><td>MILP</td><td>Optimal</td><td>1000</td></tr>
+<tr><td>Dijkstra</td><td>Optimal</td><td>1000</td></tr>
+</table>
+
+<div class="good">
+    ILP reference availability = 100%。本次 full 数据集 rerun 没有出现需要回退到 <span class="code">reference_available = False</span> 的样本。
+</div>
+
+<h2>4. 按 α 分解</h2>
+<h3>4.1 Path-Match Accuracy</h3>
+<table>
+<tr><th>α</th><th>Dijkstra</th><th>ILP</th><th>MILP</th></tr>
+<tr><td>0.5</td><td>82.5%</td><td>100.0%</td><td>67.5%</td></tr>
+<tr><td>0.6</td><td>80.5%</td><td>100.0%</td><td>65.5%</td></tr>
+<tr><td>0.7</td><td>73.5%</td><td>100.0%</td><td>61.5%</td></tr>
+<tr><td>0.8</td><td>69.5%</td><td>100.0%</td><td>65.5%</td></tr>
+<tr><td>0.9</td><td>70.0%</td><td>100.0%</td><td>58.5%</td></tr>
+</table>
+
+<h3>4.2 Tie-Aware Accuracy</h3>
+<table>
+<tr><th>α</th><th>Dijkstra</th><th>ILP</th><th>MILP</th></tr>
+<tr><td>0.5</td><td>92.5%</td><td>100.0%</td><td>91.0%</td></tr>
+<tr><td>0.6</td><td>90.5%</td><td>100.0%</td><td>92.5%</td></tr>
+<tr><td>0.7</td><td>88.5%</td><td>100.0%</td><td>90.5%</td></tr>
+<tr><td>0.8</td><td>86.5%</td><td>100.0%</td><td>90.0%</td></tr>
+<tr><td>0.9</td><td>83.5%</td><td>100.0%</td><td>87.0%</td></tr>
+</table>
+
+<h3>4.3 平均准时概率</h3>
+<table>
+<tr><th>α</th><th>Dijkstra</th><th>ILP</th><th>MILP</th></tr>
+<tr><td>0.5</td><td>0.94349</td><td>0.94397</td><td>0.94269</td></tr>
+<tr><td>0.6</td><td>0.97176</td><td>0.97259</td><td>0.97222</td></tr>
+<tr><td>0.7</td><td>0.98574</td><td>0.98648</td><td>0.98583</td></tr>
+<tr><td>0.8</td><td>0.99237</td><td>0.99311</td><td>0.99274</td></tr>
+<tr><td>0.9</td><td>0.99572</td><td>0.99643</td><td>0.99608</td></tr>
+</table>
+
+<div class="warn">
+    与此前审计一致：α 越大，路径匹配准确率整体下降；但三个方法的平均准时概率始终非常接近，差异量级在 0.001 以内。
+</div>
+
+<h2>5. 求解时间</h2>
+<table>
+<tr><th>α</th><th>Dijkstra</th><th>ILP</th><th>MILP</th></tr>
+<tr><td>0.5</td><td>0.000378s</td><td>0.678643s</td><td>0.258799s</td></tr>
+<tr><td>0.6</td><td>0.000375s</td><td>0.480985s</td><td>0.209898s</td></tr>
+<tr><td>0.7</td><td>0.000374s</td><td>0.321206s</td><td>0.192872s</td></tr>
+<tr><td>0.8</td><td>0.000386s</td><td>0.218891s</td><td>0.157379s</td></tr>
+<tr><td>0.9</td><td>0.000370s</td><td>0.171921s</td><td>0.139301s</td></tr>
+</table>
+
+<p>ILP 与 MILP 的 wall-clock 时间都随着 α 增大而下降，α=0.5 仍然是最难的区间。ILP 平均 0.374s，MILP 平均 0.192s，Dijkstra 维持在 0.4ms 量级。</p>
+
+<h2>6. Worst Cases</h2>
+<div class="card">
+    <p><strong><span class="code">worst_cases.csv</span> 记录了 70 个 unique jobs</strong>，即 MILP 准时概率低于 Dijkstra 的样本（每个 job 包含 ILP / MILP / Dijkstra 三行，共 210 行）。</p>
+    <p>按 α 分布：</p>
+    <ul>
+        <li>α=0.5: 13 jobs</li>
+        <li>α=0.6: 11 jobs</li>
+        <li>α=0.7: 16 jobs</li>
+        <li>α=0.8: 14 jobs</li>
+        <li>α=0.9: 16 jobs</li>
+    </ul>
+    <p>MILP 在这些样本上的 objective gap 平均值从 α=0.5 的 0.018 逐步下降到 α=0.9 的 0.0031。</p>
+</div>
+
+<h2>7. 结论</h2>
+<div class="good">
+    <strong>当前 notebook 输出已经足够支持 full seed42 的一份稳定复现实验报告。</strong><br>
+    这次 rerun 重复确认了三个核心事实：<br>
+    1. ILP 在 full seed42 上始终找到路径匹配最优解；<br>
+    2. MILP 的 tie-aware 指标继续优于 Dijkstra；<br>
+    3. 在 wall-clock 计时口径下，ILP 仍然保持亚秒级平均求解时间。<br><br>
+    因此，当前 full 数据集结果是自洽且可复核的。
+</div>
+
+<div class="meta" style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border);">
+    结果目录：<span class="code">results/full_protocol_seed42_scip/</span> |
+    核心文件：<span class="code">results.csv</span>,
+    <span class="code">summary.csv</span>,
+    <span class="code">status_counts.csv</span>,
+    <span class="code">worst_cases.csv</span>
+</div>
+
+</body>
+</html>
