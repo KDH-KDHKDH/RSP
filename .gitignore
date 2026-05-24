@@ -13,7 +13,5 @@ wheels/
 .vscode/
 .idea/
 
-# Results (large, regeneratable)
-results/*/figures/
-results/*.csv
-results/*.json
+# Cache
+cache/

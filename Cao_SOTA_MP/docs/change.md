@@ -1,5 +1,12 @@
 # 变更日志 (Changelog)
 
+## [2026-05-24] 北京高方差实验完成 + Notebook + 索引更新
+- 北京路网高方差实验 (CV=0.775) 完成: ILP 100%, Dijkstra 71.1% (-14.5pp vs CV=0.54), MILP 68.9% (-12.2pp)
+- ILP 优势在高方差下显著扩大: vs Dijkstra +28.9pp, vs MILP +31.1pp
+- 报告 12 生成: `docs/report/12_beijing_highvar.html`
+- 报告索引页更新: 新增 Phase 9 分类, 关键指标演进表加入报告 12
+- Jupyter Notebook 创建: `notebooks/experiment.ipynb` (32 cells, 复现 run.py 完整工作流)
+
 ## [2026-05-24] 文档规范化
 - 明确各文档职责和内容限制 (详见 README.md Documentation Structure)
 - CLAUDE.md 新增 Documentation Rules 速查表

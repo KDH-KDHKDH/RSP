@@ -99,3 +99,9 @@ Each file under `docs/` has a specific scope. When modifying the project, keep t
 - `plan.md` stays broad (phases + decisions), `todo.md` stays granular (concrete actions + shell commands)
 - `spec.md` defines "done" — no implementation details or TODO items
 - `change.md` entries are dated, grouped, factual — describe what changed and why
+
+## Git Rules
+
+- Never add `Co-Authored-By` or similar trailers to commit messages
+- Use concise, descriptive commit messages in English
+- Follow existing commit style: short subject line, optional body with bullet points

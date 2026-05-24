@@ -26,13 +26,26 @@ a:hover { text-decoration: underline; }
 .tag-audit  { background: #fef3c7; color: #e65100; }
 .tag-beijing { background: #f3e5f5; color: #7b1fa2; }
 .tag-phase8 { background: #e8f5e9; color: #2e7d32; }
+.tag-phase9 { background: #f3e5f5; color: #6a1b9a; }
 .note { color: var(--muted); font-size: 0.85rem; margin-top: 1.5rem; }
 </style>
 </head>
 <body>
 
 <h1>实验报告索引</h1>
-<div class="subtitle">Cao et al. (2020) ILP 精确解复现项目 | 共 11 份报告</div>
+<div class="subtitle">Cao et al. (2020) ILP 精确解复现项目 | 共 12 份报告</div>
+
+<h2>Phase 9 — 北京高方差实验</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>12</td>
+  <td><a href="12_beijing_highvar.html">12_beijing_highvar.html</a></td>
+  <td>2026-05-24</td>
+  <td><span class="tag tag-beijing">北京</span></td>
+  <td>北京路网高方差实验 (CV=0.775): ILP 100%, Dijkstra 71.1%, MILP 68.9%, ILP优势 +29~31pp</td>
+</tr>
+</table>
 
 <h2>Phase 8 完成后 — 项目审计</h2>
 <table>
@@ -197,6 +210,15 @@ a:hover { text-decoration: underline; }
   <td><strong>22.45s</strong></td>
   <td><strong>—</strong></td>
   <td><strong>北京 OSM, 587节点, MILP < Dijkstra</strong></td>
+</tr>
+<tr>
+  <td><a href="12_beijing_highvar.html">12</a></td>
+  <td><strong>100%</strong></td>
+  <td><strong>71.1%</strong></td>
+  <td><strong>68.9%</strong></td>
+  <td><strong>23.3s</strong></td>
+  <td><strong>0.775</strong></td>
+  <td><strong>北京高方差, ILP优势 +29~31pp</strong></td>
 </tr>
 </table>
 

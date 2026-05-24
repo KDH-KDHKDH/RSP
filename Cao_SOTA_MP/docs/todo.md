@@ -37,16 +37,14 @@ Phase 1-8 全部完成。ILP=100% 精确解已复现。待推进可视化优化�
 - [x] 北京路网高方差数据重新生成 (CV median 0.54→0.775)
 - [x] 项目全面审计 + 状态报告 → 报告 11
 - [x] 文档规范化: 明确各文档职责, todo.md 移入 docs/
+- [x] Jupyter Notebook 创建: experiment.ipynb 复现 run.py 工作流, 32 个 cell 逐节可执行
+- [x] 报告 12: 北京路网高方差实验结果分析
 
 ## 待做
 
 ### 高优先级
 
-- [ ] **北京路网高方差实验重跑**: 数据已生成 (CV=0.775)，需验证新CV下基线方法表现
-  ```bash
-  uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing --plot
-  ```
-  预计耗时: ~140 min (候选路径池 1000)
+- [x] **北京路网高方差实验重跑**: 数据已生成 (CV=0.775)，结果: ILP 100%, Dijkstra 71.1%, MILP 68.9% → 报告 12
 
 ### 中优先级
 
