@@ -1,5 +1,62 @@
 # 变更日志 (Changelog)
 
+## [2026-05-26] 交付收口：代码/路径审计、文档分层、notebook 输出清理
+
+- **交付主文档新增**: `docs/handover/004-delivery-handover.md`，明确接手顺序、必读文件、历史档案范围、已知限制和最小运行命令
+- **README 收口**: 指向 handover 004 / plan / todo / spec / report index，并把必读报告收敛为 17 / 19 / 21
+- **维护文档清理**:
+  - `plan.md` 去掉重复的报告清单项
+  - `todo.md` 明确 notebook 当前只作为入口，不把未重跑输出当证据
+  - `spec.md` 补充 `beijing-conflict` CLI 运行示例
+- **路径审计通过**:
+  - `run.py` 相对路径解析保持正常
+  - `data/full/seed42`, `data/full/seed524`, `data/beijing`, `data/beijing_conflict` 均可通过 `load_experiment_data()` 加载
+  - `seed524` 与 `beijing_conflict` 的 `edge_type` 属性已确认能序列化并回读
+- **Notebook 输出清理**: 清空 `experiment.ipynb` 保存输出和错误状态，避免将 stale 输出误当作当前 `beijing_conflict` 结果证据
+- **验证**: `env UV_CACHE_DIR=/tmp/uv-cache uv run pytest Cao_SOTA_MP/tests/ -v` -> `14 passed`
+
+## [2026-05-26] 报告 21: 北京多级冲突方差 300-job 扩展实验 — 分离度进一步扩大至 +16.6pp
+
+- **实验完成**: beijing_conflict 300 jobs (3 repeats × 20 OD × 5 α), ILP 100% Optimal
+- **MILP tie-aware 84.3% vs Dijkstra 67.7%**: 差距 +16.6pp, 较初步 100-job (+13.0pp) 扩大 3.6pp
+- **MILP 在 87.3% job 上严格优于或等于 Dijkstra** (tie-aware: 89.0%)
+- **MILP 在全部 3 个 repeat 中领先**，但 repeat 间波动 ([79, 89]% vs Dijkstra [57, 74]%)
+- **Dijkstra 高 α 下反常下降**: α=0.9 时仅 63.3% (MILP 91.7%, 差距 +28.4pp)
+- **OD 异质性**: 9/20 OD 对 MILP-favored, 3/20 Dijkstra-favored, 8/20 持平
+- 报告 21 生成: `docs/report/21_beijing_conflict_300jobs.html`
+- 报告索引更新至 21 份, 关键指标演进表新增北京冲突 300-job 行
+
+## [2026-05-26] 北京冲突实验预算收口
+- 后续北京冲突扩展实验不再安排 1000-job 全量重跑，规模上限收口为 `300 jobs`
+- `plan.md` / `todo.md` / `spec.md` / `handover` 已同步改为“300 jobs 预算内优先选取最有信息量的 repeat / OD / α 组合”
+
+## [2026-05-25] 报告 20: 北京多级冲突方差初步实验 — MILP-Dijkstra 分离度达历史最大
+
+- **实验完成**: beijing_conflict 100 jobs (1 repeat × 20 OD × 5 α), ILP 100% Optimal
+- **MILP tie-aware 85.0% vs Dijkstra 72.0%**: 差距 +13.0pp, 是 seed42 (+1.9pp) 的 7 倍, seed524 (+3.9pp) 的 3 倍
+- **MILP 首次在北京拓扑上路径匹配反超**: 57.0% vs 53.0%, 打破 seed42 中 Dijkstra 领先模式
+- **α 增大 → MILP 优势扩大**: α=0.9 时 MILP 领先 +25pp, α=0.5 时 −5pp
+- **OD 异质性显著**: 5/20 OD 对 MILP 大幅领先 (+60~+100%), 3/20 Dijkstra 领先, 12/20 平手
+- **ILP 求解 18.1s** (587节点), 与原始北京实验 (23.3s) 可比
+- 报告 20 生成: `docs/report/20_beijing_conflict_prelim.html`
+- 报告索引更新至 20 份, 关键指标演进表新增北京冲突行
+- Notebook 新增 `MAX_REPEATS` / `MAX_OD_PAIRS` 快速运行覆盖参数
+
+## [2026-05-24] Beijing Multi-Level Conflict Variance — 数据生成 + 设计落地
+
+- **Bug fix**: `generate_beijing_travel_times` 补回 3 行缺失代码 (`cv_lo/cv_hi`, `cv`, `std_time`)，此前这些行在冲突图编辑中意外删除
+- **Beijing 多级冲突方差设计**: 4 层道路等级 × 2 变体 = 8 种有效边类型
+  - `express` (trunk/trunk_link, 12边, 50% volatile): stable CV U(0.6,1.0), volatile CV U(1.4,2.2)
+  - `arterial` (primary/primary_link, 429边, 40% volatile): stable CV U(0.4,0.7), volatile CV U(1.0,1.8)
+  - `collector` (secondary_link, 22边, 25% volatile): stable CV U(0.3,0.5), volatile CV U(0.7,1.2)
+  - `local` (secondary, 603边, 15% volatile): stable CV U(0.2,0.4), volatile CV U(0.5,0.9)
+- **设计原则**: 快速道路更易拥堵 → 更高 volatile 比例和 CV 范围；volatile_% 随速度递减 (50%→15%)
+- `src/generator.py`: 新增 `BEIJING_CONFLICT_TIERS`, `BEIJING_CONFLICT_CV`, `_get_beijing_tier()`, `assign_beijing_conflict_edge_types()`, `generate_beijing_conflict_travel_times()`
+- `data/generate.py`: 新增 `--preset beijing-conflict`，输出到 `data/beijing_conflict/`
+- **预实验审计**: 8 种类型均有边, CV 分离干净(同等级 stable max < volatile min), 4/10 OD 对有多样化路径, 总体 CV median=0.417
+- `experiment.ipynb` 配置区新增 `beijing_conflict` 注释选项
+- 14 个测试通过，`--preset beijing` 仍正常工作
+
 ## [2026-05-24] 报告 19: 冲突图实验完成 — MILP ℓ₁ 松弛在双峰边类型图上优势显著
 
 - **实验完成**: seed524 冲突图 1000 jobs, ILP 100% Optimal, 全部求解成功
@@ -8,7 +65,7 @@
 - **Dijkstra 路径匹配优势大幅缩小**: 从 +11.5pp 降至 +2.9pp
 - **冲突图创造了更难实例**: α=0.5 时 ILP 最低准时率 63.2% (vs seed42 的 76.8%)
 - **ILP 求解时间下降 36%** (0.37s → 0.24s) — 结构化的冲突图使分支定界更高效
-- **MILP ≥ Dijkstra 在 93.9% 的 job 上** — MILP 在冲突图中全面占优
+- **MILP ≥ Dijkstra 在 93.9% 的 job 上** — MILP 在多数 job 上不劣于 Dijkstra
 - 报告索引更新至 19 份
 
 ## [2026-05-24] Conflict Graph: 数据生成 + 结构审计 + strict 代码清理

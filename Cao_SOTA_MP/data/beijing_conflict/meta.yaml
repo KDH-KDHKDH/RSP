@@ -1,0 +1,54 @@
+edge_type_cv:
+  arterial_stable:
+  - 0.4
+  - 0.7
+  arterial_volatile:
+  - 1.0
+  - 1.8
+  collector_stable:
+  - 0.3
+  - 0.5
+  collector_volatile:
+  - 0.7
+  - 1.2
+  express_stable:
+  - 0.6
+  - 1.0
+  express_volatile:
+  - 1.4
+  - 2.2
+  local_stable:
+  - 0.2
+  - 0.4
+  local_volatile:
+  - 0.5
+  - 0.9
+edge_type_tiers:
+  arterial:
+    highways:
+    - primary
+    - primary_link
+    volatile_pct: 0.4
+  collector:
+    highways:
+    - secondary_link
+    volatile_pct: 0.25
+  express:
+    highways:
+    - trunk
+    - trunk_link
+    volatile_pct: 0.5
+  local:
+    highways:
+    - secondary
+    volatile_pct: 0.15
+location: Beijing, China
+network_source: OpenStreetMap (offline GraphML extracted from PBF)
+num_edges: 1066
+num_nodes: 587
+num_od_pairs: 20
+num_repeats: 10
+num_samples: 500
+seed: 42
+travel_time_model: lognormal, multi-level conflict (4 tiers x 2 variants = 8 edge
+  types)

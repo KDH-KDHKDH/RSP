@@ -269,3 +269,121 @@ def generate_beijing_travel_times(network: RoadNetwork, num_samples: int,
         W[:, j] = rng.lognormal(mu, sigma, size=num_samples)
 
     return W
+
+
+def assign_conflict_edge_types(network: RoadNetwork, seed: int = 42) -> None:
+    """Assign dual edge types (fast_risky / slow_stable) to a network in-place.
+
+    Must be called once before ``generate_conflict_travel_times`` so edge types
+    are consistent across repeats and survive serialization.
+    """
+    rng = np.random.default_rng(seed)
+    num_edges = network.num_edges
+    edge_types = ["fast_risky"] * (num_edges // 2) + ["slow_stable"] * (num_edges - num_edges // 2)
+    rng.shuffle(edge_types)
+    for j, (u, v) in enumerate(network.edges):
+        network.graph.edges[u, v]["edge_type"] = edge_types[j]
+
+
+def generate_conflict_travel_times(network: RoadNetwork, num_samples: int,
+                                    seed: int = 42) -> np.ndarray:
+    """Generate travel times with dual edge types to induce path conflicts.
+
+    Edge types must already be assigned on the graph via
+    ``assign_conflict_edge_types`` before calling this function.
+
+    Returns matrix W where W[i, j] = travel time of sample i on edge j.
+    """
+    rng = np.random.default_rng(seed)
+    num_edges = network.num_edges
+    W = np.zeros((num_samples, num_edges), dtype=np.float64)
+
+    for j, (u, v) in enumerate(network.edges):
+        etype = network.graph.edges[u, v].get("edge_type", "slow_stable")
+
+        if etype == "fast_risky":
+            mean_time = rng.uniform(10.0, 50.0)
+            cv = rng.uniform(0.8, 1.4)
+        else:  # slow_stable
+            mean_time = rng.uniform(40.0, 90.0)
+            cv = rng.uniform(0.2, 0.6)
+
+        std_time = mean_time * cv
+        sigma2 = np.log(1 + (std_time / mean_time) ** 2)
+        mu = np.log(mean_time) - sigma2 / 2
+        sigma = np.sqrt(sigma2)
+        W[:, j] = rng.lognormal(mu, sigma, size=num_samples)
+
+    return W
+
+
+# ── Beijing Multi-Level Conflict Variance ──────────────────────────────
+
+BEIJING_CONFLICT_TIERS = {
+    "express":   {"highways": {"trunk", "trunk_link"},             "volatile_pct": 0.50},
+    "arterial":  {"highways": {"primary", "primary_link"},          "volatile_pct": 0.40},
+    "collector": {"highways": {"secondary_link"},                   "volatile_pct": 0.25},
+    "local":     {"highways": {"secondary"},                        "volatile_pct": 0.15},
+}
+
+BEIJING_CONFLICT_CV = {
+    "express_stable":      (0.6, 1.0),
+    "express_volatile":    (1.4, 2.2),
+    "arterial_stable":     (0.4, 0.7),
+    "arterial_volatile":   (1.0, 1.8),
+    "collector_stable":    (0.3, 0.5),
+    "collector_volatile":  (0.7, 1.2),
+    "local_stable":        (0.2, 0.4),
+    "local_volatile":      (0.5, 0.9),
+}
+
+
+def _get_beijing_tier(highway: str) -> str:
+    """Map OSM highway type to Beijing conflict tier."""
+    for tier_name, tier_info in BEIJING_CONFLICT_TIERS.items():
+        if highway in tier_info["highways"]:
+            return tier_name
+    return "local"
+
+
+def assign_beijing_conflict_edge_types(network: RoadNetwork, seed: int = 42) -> None:
+    """Assign multi-level conflict edge types to Beijing network in-place.
+
+    Each edge gets a tier from its highway type and a variant (stable/volatile)
+    based on the tier's volatile probability. Must be called once before
+    ``generate_beijing_conflict_travel_times``.
+    """
+    rng = np.random.default_rng(seed)
+    for u, v in network.edges:
+        highway = network.graph.edges[u, v].get("highway", "secondary")
+        tier = _get_beijing_tier(highway)
+        volatile_pct = BEIJING_CONFLICT_TIERS[tier]["volatile_pct"]
+        variant = "volatile" if rng.random() < volatile_pct else "stable"
+        network.graph.edges[u, v]["edge_type"] = f"{tier}_{variant}"
+
+
+def generate_beijing_conflict_travel_times(network: RoadNetwork, num_samples: int,
+                                            seed: int = 42) -> np.ndarray:
+    """Generate travel times for Beijing network with multi-level conflict variance.
+
+    Edge types must already be assigned via ``assign_beijing_conflict_edge_types``.
+    Each edge uses its OSM-derived mean_time with CV from BEIJING_CONFLICT_CV.
+    """
+    rng = np.random.default_rng(seed)
+    num_edges = network.num_edges
+    W = np.zeros((num_samples, num_edges), dtype=np.float64)
+
+    for j, (u, v) in enumerate(network.edges):
+        edge_data = network.graph.edges[u, v]
+        mean_time = float(edge_data.get("mean_time", 3.0))
+        etype = edge_data.get("edge_type", "local_stable")
+        cv_lo, cv_hi = BEIJING_CONFLICT_CV.get(etype, (0.3, 0.7))
+        cv = rng.uniform(cv_lo, cv_hi)
+
+        std_time = mean_time * cv
+        sigma2 = np.log(1 + (std_time / mean_time) ** 2)
+        mu = np.log(mean_time) - sigma2 / 2
+        sigma = np.sqrt(sigma2)
+        W[:, j] = rng.lognormal(mu, sigma, size=num_samples)
+
+    return W

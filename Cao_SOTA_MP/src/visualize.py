@@ -19,7 +19,7 @@ def plot_accuracy_vs_deadline(df: pd.DataFrame, output_dir: str = "results/figur
     """Reproduce Fig.2(a): average accuracy for each method vs deadline (alpha).
 
     Primary chart: tie-aware accuracy (|gap| ≤ 1/N).
-    Auxiliary charts: strict threshold (|gap| ≤ 0.5/N) and path-match accuracy.
+    Auxiliary chart: path-match accuracy.
     """
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -55,39 +55,6 @@ def plot_accuracy_vs_deadline(df: pd.DataFrame, output_dir: str = "results/figur
         fig.savefig(f"{output_dir}/accuracy_vs_deadline.png", dpi=150)
         plt.close(fig)
         print(f"  Saved: {output_dir}/accuracy_vs_deadline.png")
-
-    # Strict threshold: Tie-aware accuracy (|gap| ≤ 0.5/N)
-    if "tie_aware_correct_strict" in df.columns and df["tie_aware_correct_strict"].notna().any():
-        tie_strict_acc = (
-            df.groupby(["alpha", "method"], as_index=False)["tie_aware_correct_strict"]
-            .mean()
-            .rename(columns={"tie_aware_correct_strict": "accuracy"})
-            .sort_values(["method", "alpha"])
-        )
-        fig, ax = plt.subplots(figsize=(8, 5))
-        for method in METHOD_ORDER:
-            subset = tie_strict_acc[tie_strict_acc["method"] == method]
-            style = METHOD_STYLE[method]
-            ax.plot(
-                subset["alpha"],
-                subset["accuracy"],
-                label=method,
-                color=style["color"],
-                marker=style["marker"],
-                linewidth=2.2,
-                markersize=7,
-            )
-        ax.set_xlabel("α (deadline level)")
-        ax.set_ylabel("Tie-Aware Accuracy (|gap| ≤ 0.5/N)")
-        ax.set_xticks(sorted(tie_strict_acc["alpha"].unique()))
-        ax.set_ylim(0.55, 1.02)
-        ax.legend()
-        ax.set_title("Tie-Aware Accuracy vs Deadline (strict threshold |gap| ≤ 0.5/N)")
-        ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.8)
-        fig.tight_layout()
-        fig.savefig(f"{output_dir}/tie_aware_strict_accuracy_vs_deadline.png", dpi=150)
-        plt.close(fig)
-        print(f"  Saved: {output_dir}/tie_aware_strict_accuracy_vs_deadline.png")
 
     # Auxiliary: Path-match accuracy
     if "correct" in df.columns and df["correct"].notna().any():
@@ -179,7 +146,6 @@ def save_compute_time_table(df: pd.DataFrame, output_dir: str = "results"):
         df.groupby("method")
         .agg(
             tie_aware_accuracy=("tie_aware_correct", "mean"),
-            tie_aware_accuracy_strict=("tie_aware_correct_strict", "mean"),
             path_match_accuracy=("correct", "mean"),
             mean_solve_time_s=("solve_time", "mean"),
             median_solve_time_s=("solve_time", "median"),
@@ -215,13 +181,6 @@ def print_summary(df: pd.DataFrame):
         tie_acc = df.groupby("method")["tie_aware_correct"].mean()
         print("Tie-Aware Accuracy (|gap| ≤ 1/N) — primary metric:")
         for method, a in tie_acc.items():
-            print(f"  {method:10s}: {a:.1%}")
-
-    # Tie-aware strict threshold
-    if "tie_aware_correct_strict" in df.columns and df["tie_aware_correct_strict"].notna().any():
-        tie_strict_acc = df.groupby("method")["tie_aware_correct_strict"].mean()
-        print("\nTie-Aware Accuracy (|gap| ≤ 0.5/N) — strict threshold:")
-        for method, a in tie_strict_acc.items():
             print(f"  {method:10s}: {a:.1%}")
 
     # Path-match accuracy (auxiliary diagnostic)

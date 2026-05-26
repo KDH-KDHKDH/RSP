@@ -9,9 +9,11 @@
 ### 2.1 数据生成 `data/generate.py`
 
 ```bash
-uv run python Cao_SOTA_MP/data/generate.py --preset small          # 小规模调试
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42  # 65节点人工路网
-uv run python Cao_SOTA_MP/data/generate.py --preset beijing         # 北京OSM路网
+uv run python Cao_SOTA_MP/data/generate.py --preset small              # 小规模调试
+uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42      # 65节点人工路网
+uv run python Cao_SOTA_MP/data/generate.py --preset conflict --seed 524 # 双峰冲突人工路网
+uv run python Cao_SOTA_MP/data/generate.py --preset beijing             # 北京OSM路网
+uv run python Cao_SOTA_MP/data/generate.py --preset beijing-conflict    # 北京多级冲突方差
 ```
 
 输出到 `data/{preset}/` 或 `data/full/seed{N}/`：
@@ -26,6 +28,7 @@ uv run python Cao_SOTA_MP/data/generate.py --preset beijing         # 北京OSM�
 uv run python Cao_SOTA_MP/run.py                                          # 默认(data/small)
 uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
 uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing --plot
+uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing_conflict --plot
 ```
 
 | 参数 | 默认值 | 说明 |
@@ -237,6 +240,7 @@ s.t. pᵢ ≥ Σⱼ Wᵢⱼ·xⱼ - τ,  ∀i
 - 在北京真实拓扑上引入“冲突化方差”方案，使部分走廊呈现“快但险”，另一部分呈现“慢但稳”
 - 该扩展应优先依赖道路属性分层，而不是全图统一抬高 CV
 - 扩展实验的目标不是单纯增加方差，而是制造可替代路径之间的均值-风险冲突
+- 后续扩展实验的规模上限为 `300 jobs`，不规划 1000-job 全量重跑
 
 ### 4.3 评估指标
 
@@ -304,18 +308,28 @@ tie_aware_correct = |p_ILP - p_method| ≤ 1/N
   - `slow_stable`: `mean ~ Uniform(40, 90)`, `cv ~ Uniform(0.2, 0.6)`
 - 需要单独检查新图是否真的带来“快但险 vs 慢但稳”的路径冲突，而不只是整体 CV 变化
 
-### 4.7 后续北京冲突化方差方案要求
+### 4.7 北京冲突化方差方案（已实现）
 
-北京数据集如果要做“类似 conflict graph”的扩展，建议满足：
-- 基于真实道路属性做分层，而不是完全随机分边
-- 至少区分两类走廊：
-  - 快但险：较低均值、较高 CV
-  - 慢但稳：较高均值、较低 CV
-- 先证明“存在路径级冲突”，再解读求解器排名变化
-- 必须额外输出以下审计项：
-  - 冲突 OD 占比
-  - 每种方法最终选路中两类边的占比
-  - 冲突 OD 与非冲突 OD 的分开结果
+北京数据集已实现多级冲突方差扩展（`--preset beijing-conflict`），设计如下：
+
+- 基于真实道路属性做分层：4 层道路等级 (express / arterial / collector / local) × 2 变体 (stable / volatile) = 8 种边类型
+- 两类走廊：
+  - 快但险 (volatile)：较高 CV，较高准时风险
+  - 慢但稳 (stable)：较低 CV，较可预测
+- volatile% 随道路速度递减：express 50% → arterial 40% → collector 25% → local 15%
+- 各层级 stable/volatile CV 范围严格分离（stable max < volatile min），无重叠
+
+审计要求（每次新数据生成或参数调整后）：
+- 冲突 OD 占比
+- 每种方法最终选路中两类边的占比
+- 冲突 OD 与非冲突 OD 的分开结果
+- 若只跑 1 repeat 的初步实验，报告结论必须明确标注为 preliminary
+- 扩展实验规模上限为 300 jobs，优先覆盖多个 repeat、已知冲突 OD，以及低/高 α 区间
+- 若已跑出 300-job 扩展报告，后续解释必须补上：
+  - 北京原始高方差基线 vs 北京冲突扩展的同口径对照
+  - conflict OD / non-conflict OD 分层统计
+  - 每种方法最终路径中的 stable / volatile 边占比
+- notebook 作为优先入口时，保存的输出结果必须与当前配置的数据集一致；若配置切换后未重跑，不得将旧输出当作新实验证据
 
 ## 5. 求解器规格
 
@@ -353,9 +367,15 @@ tie_aware_correct = |p_ILP - p_method| ≤ 1/N
 - [x] Dijkstra tie-aware = 90.0%，MILP tie-aware = 88.9%
 - [x] 路径匹配准确率保留作辅助诊断 (Dijkstra 71.1%, MILP 68.9%)
 
+**北京多级冲突方差 (报告 21, 300 jobs 扩展):**
+- [x] ILP准确率 = 100%, ILP平均计算时间 18.8s
+- [x] MILP tie-aware 84.3% vs Dijkstra 67.7% (+16.6pp), 分离度较初步实验扩大
+- [x] 路径匹配: MILP 58.7% > Dijkstra 49.3%, MILP 在北京拓扑上持续领先
+- [x] MILP 在 3/3 个 repeat 中均领先, 多级冲突方差结论确认
+
 ### 6.3 可视化验收
-- [ ] 主图切换为 Tie-Aware Accuracy vs α
-- [ ] 路径匹配准确率图保留为附图/次级图
+- [x] 主图切换为 Tie-Aware Accuracy vs α
+- [x] 路径匹配准确率图保留为附图/次级图
 - [x] 复现 Fig.2(b)(c): 准时概率对比散点图
 - [x] 复现 Table I: 计算时间对比表
 

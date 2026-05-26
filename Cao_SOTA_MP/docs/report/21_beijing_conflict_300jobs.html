@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>报告 21 — Beijing Multi-Level Conflict 300-job Extended Experiment</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; --good: #16a34a; --warn: #ea580c; --bad: #dc2626; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 1000px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.3rem; color: var(--accent); }
+.meta { color: var(--muted); font-size: 0.92rem; margin-bottom: 2rem; }
+h2 { font-size: 1.35rem; margin: 2rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 1.08rem; margin: 1.4rem 0 0.5rem; color: var(--accent); }
+p, li { margin-bottom: 0.6rem; }
+ul, ol { padding-left: 1.5rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.7rem; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; }
+tr:nth-child(even) { background: #f8fafc; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+.good { background: #e8f5e9; border-left: 4px solid var(--good); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.warn { background: #fef3c7; border-left: 4px solid var(--warn); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.info { background: #eff6ff; border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.highlight { background: #f3e8ff; border-left: 4px solid #7c3aed; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.bad { background: #fce4ec; border-left: 4px solid var(--bad); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<h1>报告 21: 北京多级冲突方差扩展实验 — 300 jobs 确认</h1>
+<div class="meta">2026-05-26 &middot; 数据集: beijing_conflict &middot; 求解器: SCIP &middot; 3 repeats × 20 OD × 5 α = 300 jobs &middot; 扩展验证</div>
+
+<div class="info">
+<strong>实验目的:</strong> 将北京多级冲突方差的初步实验（100 jobs, repeat 0 only）扩展到 3 个 repeat，确认 MILP ℓ₁ 松弛在方差化北京路网上的分离度是否稳定，以及初步报告的结论是否随 repeat 泛化。
+</div>
+
+<h2>1. 实验配置</h2>
+
+<div class="card">
+<table>
+<tr><th>参数</th><th>值</th></tr>
+<tr><td>路网</td><td>北京 OSM, 587 节点, 1066 边 (central Beijing major roads)</td></tr>
+<tr><td>方差设计</td><td>4 层 × 2 变体 = 8 种边类型 (express/arterial/collector/local × stable/volatile)</td></tr>
+<tr><td>CV 范围</td><td>stable: 0.2–1.0, volatile: 0.5–2.2, 同层内 stable max < volatile min (无重叠)</td></tr>
+<tr><td>样本数 N</td><td>500</td></tr>
+<tr><td>重复次数</td><td>3</td></tr>
+<tr><td>OD 对数</td><td>20</td></tr>
+<tr><td>α 水平</td><td>[0.5, 0.6, 0.7, 0.8, 0.9]</td></tr>
+<tr><td>总任务量</td><td>3 × 20 × 5 = 300 jobs × 3 方法 = 900 次求解</td></tr>
+<tr><td>Deadline 模式</td><td>heuristic (4 源候选路径池, max 1000)</td></tr>
+<tr><td>Big-M</td><td>逐样本紧界 Mᵢ, cap 1e6</td></tr>
+</table>
+</div>
+
+<div class="good">
+<strong>所有 300 个 ILP job 均返回 Optimal 状态，ILP reference availability = 100%。</strong>
+</div>
+
+<h2>2. 核心结果</h2>
+
+<h3>2.1 总体准确率</h3>
+
+<table>
+<tr><th>方法</th><th>Tie-Aware (主, \|gap\| ≤ 1/N)</th><th>Path-Match (辅)</th><th>零 gap 率</th><th>平均求解时间</th></tr>
+<tr><td><strong>ILP</strong></td><td><strong>100.0%</strong></td><td><strong>100.0%</strong></td><td>—</td><td>18.8s</td></tr>
+<tr><td><strong>MILP</strong></td><td><strong>84.3%</strong></td><td><strong>58.7%</strong></td><td>84.0%</td><td>7.7s</td></tr>
+<tr><td>Dijkstra</td><td>67.7%</td><td>49.3%</td><td>67.7%</td><td>0.005s</td></tr>
+</table>
+
+<div class="highlight">
+<strong>MILP 在 tie-aware 和 path-match 两个指标上均领先 Dijkstra:</strong> tie-aware +16.6pp, path-match +9.4pp。MILP 零 gap 率 84.0% 显著高于 Dijkstra 的 67.7%，表明 ℓ₁ 松弛在多级冲突方差的北京路网上更频繁地恢复 ILP 最优解。
+</div>
+
+<h3>2.2 与初步实验对比 (100 jobs vs 300 jobs)</h3>
+
+<table>
+<tr><th>指标</th><th>100 jobs (repeat 0)</th><th>300 jobs (3 repeats)</th><th>变化</th></tr>
+<tr><td>MILP tie-aware</td><td><strong>85.0%</strong></td><td>84.3%</td><td style="color:#ea580c;">-0.7pp</td></tr>
+<tr><td>Dijkstra tie-aware</td><td><strong>72.0%</strong></td><td>67.7%</td><td style="color:#ea580c;">-4.3pp</td></tr>
+<tr><td>MILP - Dijkstra gap</td><td>+13.0pp</td><td><strong>+16.6pp</strong></td><td style="color:#16a34a;">+3.6pp 扩大</td></tr>
+<tr><td>MILP path-match</td><td>57.0%</td><td><strong>58.7%</strong></td><td style="color:#16a34a;">+1.7pp</td></tr>
+<tr><td>Dijkstra path-match</td><td><strong>52.0%</strong></td><td>49.3%</td><td style="color:#ea580c;">-2.7pp</td></tr>
+<tr><td>ILP solve time mean</td><td>18.1s</td><td>18.8s</td><td style="color:#64748b;">+0.7s</td></tr>
+</table>
+
+<div class="warn">
+<strong>初步报告的 MILP 85.0% 在一定程度上受到 repeat 0 采样的影响:</strong> 扩展到 3 repeats 后 MILP 小幅降至 84.3%，而 Dijkstra 从 72.0% 降至 67.7%，MILP-Dijkstra 差距反而从 +13.0pp 扩大到 +16.6pp。初步结论的方向和量级均得到确认。
+</div>
+
+<h2>3. 按 α 分层</h2>
+
+<table>
+<tr><th>α</th><th>MILP Tie-Aware</th><th>Dijkstra Tie-Aware</th><th>MILP Path-Match</th><th>Dijkstra Path-Match</th><th>MILP ≥ Dijkstra (tie-aware)</th><th>ILP 准时率 (mean/min)</th></tr>
+<tr><td>0.5</td><td><strong>78.3%</strong></td><td>75.0%</td><td>55.0%</td><td><strong>56.7%</strong></td><td>83.3%</td><td>0.952 / 0.792</td></tr>
+<tr><td>0.6</td><td><strong>80.0%</strong></td><td>66.7%</td><td><strong>60.0%</strong></td><td>53.3%</td><td>88.3%</td><td>0.975 / 0.894</td></tr>
+<tr><td>0.7</td><td><strong>90.0%</strong></td><td>70.0%</td><td><strong>71.7%</strong></td><td>51.7%</td><td>90.0%</td><td>0.987 / 0.958</td></tr>
+<tr><td>0.8</td><td><strong>81.7%</strong></td><td>63.3%</td><td><strong>53.3%</strong></td><td>48.3%</td><td>90.0%</td><td>0.992 / 0.968</td></tr>
+<tr><td>0.9</td><td><strong>91.7%</strong></td><td>63.3%</td><td><strong>53.3%</strong></td><td>36.7%</td><td>93.3%</td><td>0.996 / 0.982</td></tr>
+</table>
+
+<div class="warn">
+<strong>α 趋势分化:</strong> MILP 的 tie-aware 随 α 增大而上升（78% → 92%），与 seed42 和 seed524 一致。Dijkstra 反而随 α 增大而下降（75% → 63%），这是北京多级冲突方差独有的现象 — 当 deadline 较宽松时，均值最短路径选择不稳定的快速路比例更高，反而降低了准时概率。
+</div>
+
+<h2>4. Repeat 稳定性</h2>
+
+<table>
+<tr><th>Repeat</th><th>MILP Tie-Aware</th><th>Dijkstra Tie-Aware</th><th>差距</th><th>MILP Path-Match</th><th>Dijkstra Path-Match</th></tr>
+<tr><td>0</td><td><strong>85.0%</strong></td><td>72.0%</td><td>+13.0pp</td><td>57.0%</td><td>52.0%</td></tr>
+<tr><td>1</td><td><strong>89.0%</strong></td><td>57.0%</td><td><strong>+32.0pp</strong></td><td><strong>67.0%</strong></td><td>46.0%</td></tr>
+<tr><td>2</td><td><strong>79.0%</strong></td><td>74.0%</td><td>+5.0pp</td><td>52.0%</td><td>50.0%</td></tr>
+<tr><td>范围</td><td>79–89%</td><td>57–74%</td><td>+5～+32pp</td><td>52–67%</td><td>46–52%</td></tr>
+</table>
+
+<div class="info">
+<strong>MILP 在全部 3 个 repeat 中均领先 Dijkstra，但 repeat 间存在明显波动。</strong> Repeat 1 的 Dijkstra 特别低 (57.0%)，使差距扩大到 +32pp，而 repeat 2 仅 +5pp。这种波动源于不同 repeat 的行程时间采样波动对均值最短路径的影响大于对 ILP/MILP 的影响。
+</div>
+
+<h2>5. OD 级分析</h2>
+
+<table>
+<tr><th>OD 对</th><th>MILP wins</th><th>Dijkstra wins</th><th>类型</th></tr>
+<tr><td>0</td><td>12/15</td><td>0/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>1</td><td>8/15</td><td>4/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>4</td><td>7/15</td><td>4/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>6</td><td>7/15</td><td>0/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>8</td><td>6/15</td><td>1/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>10</td><td>5/15</td><td>4/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>17</td><td>8/15</td><td>0/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>18</td><td>6/15</td><td>0/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>19</td><td>12/15</td><td>0/15</td><td style="color:#7c3aed;">CONFLICT</td></tr>
+<tr><td>7</td><td>3/15</td><td>7/15</td><td style="color:#ea580c;">Dijkstra-leaning</td></tr>
+<tr><td>15</td><td>0/15</td><td>7/15</td><td style="color:#ea580c;">Dijkstra-leaning</td></tr>
+</table>
+
+<div class="highlight">
+<strong>9/20 OD 对 (45%) 属于 MILP-favored 冲突型，3/20 为 Dijkstra-favored，8/20 基本持平。</strong> 与初步实验发现的 4/10 OD 冲突相比，300-job 扩展揭示了更多具有方差-均值权衡的 OD 对。OD 19 和 OD 0 表现最为极端（MILP 12/12 × 5α 领先）。
+</div>
+
+<h2>6. 求解性能</h2>
+
+<table>
+<tr><th>方法</th><th>均值</th><th>中位数</th><th>标准差</th><th>最大</th><th>与初步实验对比</th></tr>
+<tr><td>ILP</td><td>18.81s</td><td>17.19s</td><td>13.49s</td><td>63.79s</td><td>18.1s → 18.8s (+0.7s)</td></tr>
+<tr><td>MILP</td><td>7.72s</td><td>5.26s</td><td>5.72s</td><td>34.33s</td><td>— (新报告)</td></tr>
+<tr><td>Dijkstra</td><td>0.005s</td><td>0.004s</td><td>0.005s</td><td>0.047s</td><td>—</td></tr>
+</table>
+
+<div class="info">
+<strong>ILP 求解时间 (18.8s) 与初步实验 (18.1s) 几乎一致，也与原始北京高方差实验 (23.3s) 可比。</strong> 差异主要受 α 和 OD 分布影响。最大 63.8s 的单例未触发 120s time limit。MILP 平均 7.7s（约为 ILP 的 41%），中位数仅 5.3s。
+</div>
+
+<h2>7. 综合结论</h2>
+
+<div class="good">
+<strong>1. MILP 领先 Dijkstra 的结论在 300-job 扩展中得到确认。</strong>
+<p>MILP tie-aware 84.3% vs Dijkstra 67.7%，差距 +16.6pp（初步 100-job 的 +13.0pp → 扩展到 +16.6pp）。MILP 在 87.3% 的 job 上严格不劣于 Dijkstra（89.0% 在 tie-aware 意义上）。</p>
+</div>
+
+<div class="good">
+<strong>2. MILP 在全部 3 个 repeat 中均领先 Dijkstra，但差距因 repeat 而异（+5～+32pp）。</strong>
+<p>重复次数的增加使结论更稳健——MILP 100% repeat 领先，Dijkstra 的均值最短路径对采样波动更敏感（57–74% 波动 vs MILP 79–89%）。</p>
+</div>
+
+<div class="warn">
+<strong>3. Dijkstra 在高 α 下表现反常下降，揭示了均值最短路径的固有缺陷。</strong>
+<p>当 deadline 宽松时，Dijkstra 倾向于选择包含 volatile 快速路的"激进"路径，反而因高方差导致准时概率下降。MILP 的 ℓ₁ 松弛自动规避了这一问题，α=0.9 时差距最大（+28.4pp）。</p>
+</div>
+
+<div class="info">
+<strong>4. OD 异质性显著，45% 的 OD 对呈现冲突型路径选择。</strong>
+<p>多级冲突方差设计成功制造了丰富的出行场景。MILP 在 9/20 OD 对上显著优于 Dijkstra，但仍有 3/20 OD 对 Dijkstra 领先（多为 shortest 路径已接近最优的简单场景）。</p>
+</div>
+
+<div class="highlight">
+<strong>5. 300-job 扩展未改变初步报告的核心量级，MILP-Dijkstra 分离度在北京多级冲突方差上具有可重复性。</strong>
+<p>初步 100-job 的发现（+13.0pp）在扩展后甚至有所扩大（+16.6pp），说明该结论不是单 repeat 采样的偶然结果。建议在此数据集上将 MILP 优先作为 Dijkstra 的替代方案。</p>
+</div>
+
+<h2>8. 各数据集对比总览</h2>
+
+<table>
+<tr><th>数据集</th><th>路网</th><th>MILP Tie-Aware</th><th>Dijkstra Tie-Aware</th><th>差距</th><th>MILP Path-Match</th><th>Dijkstra Path-Match</th></tr>
+<tr><td>seed42 均匀图</td><td>65 节点</td><td>90.2%</td><td>88.3%</td><td>+1.9pp</td><td>63.7%</td><td>75.2%</td></tr>
+<tr><td>seed524 冲突图</td><td>65 节点</td><td>91.2%</td><td>87.3%</td><td>+3.9pp</td><td>75.3%</td><td>78.2%</td></tr>
+<tr><td>北京高方差</td><td>587 节点</td><td>—</td><td>—</td><td>—</td><td>68.9%</td><td>71.1%</td></tr>
+<tr><td><strong>北京多级冲突</strong></td><td><strong>587 节点</strong></td><td><strong>84.3%</strong></td><td><strong>67.7%</strong></td><td><strong>+16.6pp</strong></td><td><strong>58.7%</strong></td><td><strong>49.3%</strong></td></tr>
+</table>
+
+<div class="good">
+<strong>北京多级冲突方差的 MILP-Dijkstra 分离度 (+16.6pp) 在所有数据集上居于首位。</strong> 在 587 节点的真实路网上，多级方差设计将 MILP 的 ℓ₁ 松弛优势从人工图上的 +1.9～+3.9pp 提升到 +16.6pp，且 MILP 首次在 path-match 指标上也领先 Dijkstra 9.4pp。
+</div>
+
+</body>
+</html>

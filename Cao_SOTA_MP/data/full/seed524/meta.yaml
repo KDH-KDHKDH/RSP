@@ -1,0 +1,22 @@
+edge_types:
+  fast_risky:
+    cv_range:
+    - 0.8
+    - 1.4
+    mean_range:
+    - 10
+    - 50
+  slow_stable:
+    cv_range:
+    - 0.2
+    - 0.6
+    mean_range:
+    - 40
+    - 90
+num_edges: 123
+num_nodes: 65
+num_od_pairs: 20
+num_repeats: 10
+num_samples: 500
+seed: 524
+travel_time_model: lognormal, dual edge types to induce path conflicts

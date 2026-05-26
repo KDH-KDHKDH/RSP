@@ -33,7 +33,40 @@ a:hover { text-decoration: underline; }
 <body>
 
 <h1>实验报告索引</h1>
-<div class="subtitle">Cao et al. (2020) ILP 精确解复现项目 | 共 18 份报告</div>
+<div class="subtitle">Cao et al. (2020) ILP 精确解复现项目 | 共 21 份报告</div>
+
+<!-- ===== Beijing Multi-Level Conflict ===== -->
+<h2>Beijing Multi-Level Conflict — 北京多级冲突方差</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>21</td>
+  <td><a href="21_beijing_conflict_300jobs.html">21_beijing_conflict_300jobs.html</a></td>
+  <td>2026-05-26</td>
+  <td><span class="tag tag-beijing">北京冲突</span></td>
+  <td>北京多级冲突方差扩展实验 (300 jobs, 3 repeats): MILP 84.3% vs Dijkstra 67.7% (+16.6pp), 扩展结果支持 MILP 在主口径上领先</td>
+</tr>
+<tr>
+  <td>20</td>
+  <td><a href="20_beijing_conflict_prelim.html">20_beijing_conflict_prelim.html</a></td>
+  <td>2026-05-25</td>
+  <td><span class="tag tag-beijing">北京冲突</span></td>
+  <td>北京多级冲突方差初步实验: MILP tie-aware 85.0% vs Dijkstra 72.0% (+13.0pp), 初步结果显示冲突方差可能放大方法差异</td>
+</tr>
+</table>
+
+<!-- ===== Conflict Graph ===== -->
+<h2>Conflict Graph — 冲突图实验族</h2>
+<table>
+<tr><th>#</th><th>报告</th><th>日期</th><th>标签</th><th>内容</th></tr>
+<tr>
+  <td>19</td>
+  <td><a href="19_conflict_graph_seed524.html">19_conflict_graph_seed524.html</a></td>
+  <td>2026-05-24</td>
+  <td><span class="tag tag-beijing">冲突图</span></td>
+  <td>双峰边类型图实验: MILP 路径匹配 +11.6pp, tie-aware MILP 91.2% > Dijkstra 87.3%, 冲突结构验证</td>
+</tr>
+</table>
 
 <!-- ===== Metric Policy ===== -->
 <h2>Metric Policy — 主准确率切换</h2>
@@ -311,6 +344,33 @@ a:hover { text-decoration: underline; }
   <td><strong>0.37s</strong></td>
   <td><strong>0.83</strong></td>
   <td><strong>Metric Policy: tie-aware 主指标, 0.5/N 阈值无增量区分</strong></td>
+</tr>
+<tr>
+  <td><a href="19_conflict_graph_seed524.html">19</a></td>
+  <td><strong>100%</strong></td>
+  <td><strong>87.3%</strong></td>
+  <td><strong>91.2%</strong></td>
+  <td><strong>0.24s</strong></td>
+  <td><strong>0.76-1.84 / 0.20-0.64</strong></td>
+  <td><strong>冲突图: MILP 路径匹配 +11.6pp, ℓ₁ 松弛在冲突图上优势明显</strong></td>
+</tr>
+<tr>
+  <td><a href="20_beijing_conflict_prelim.html">20</a></td>
+  <td><strong>100%</strong></td>
+  <td><strong>72.0%</strong></td>
+  <td><strong>85.0%</strong></td>
+  <td><strong>18.1s</strong></td>
+  <td><strong>0.19-2.42</strong></td>
+  <td><strong>北京多级冲突 (587节点): MILP-Dij 差距 +13pp, 初步结果显示分离度明显扩大</strong></td>
+</tr>
+<tr>
+  <td><a href="21_beijing_conflict_300jobs.html">21</a></td>
+  <td><strong>100%</strong></td>
+  <td><strong>67.7%</strong></td>
+  <td><strong>84.3%</strong></td>
+  <td><strong>18.8s</strong></td>
+  <td><strong>0.19-2.42</strong></td>
+  <td><strong>北京多级冲突 300-job 扩展: MILP-Dij 差距 +16.6pp, 扩展结果支持主口径差距进一步扩大</strong></td>
 </tr>
 </table>
 

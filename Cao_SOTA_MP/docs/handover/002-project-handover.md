@@ -163,8 +163,12 @@ def solve_xxx(network: RoadNetwork, W: np.ndarray,      # W: N × |L| travel tim
 | 15 | 15_full_seed42_notebook_rerun | Artificial | full/seed42 notebook + SCIP rerun |
 | 16 | 16_full_seed42_detailed_review | Artificial | detailed metrics review, follow-up plan, project status audit |
 | 17 | 17_full_protocol_seed42_1000jobs | Artificial | 1000-job large-scale validation on full seed42 |
+| 18 | 18_metric_policy_rollout | — | metric policy rollout and strict-threshold history |
+| 19 | 19_conflict_graph_seed524 | Artificial | first conflict-graph result |
+| 20 | 20_beijing_conflict_prelim | Beijing | preliminary Beijing multi-level conflict variance result |
+| 21 | 21_beijing_conflict_300jobs | Beijing | 300-job Beijing conflict extension |
 
-**Latest result reports in this repo:** 19 (conflict artificial graph), 17 (seed42 large-scale artificial), 12 (Beijing high-CV).
+**Latest result reports in this repo:** 21 (Beijing conflict 300 jobs), 19 (conflict artificial graph), 17 (seed42 large-scale artificial), 12 (Beijing high-CV).
 
 Open `docs/report/index.html` for a navigable index with evolution table.
 
@@ -182,7 +186,7 @@ Open `docs/report/index.html` for a navigable index with evolution table.
 | Jupyter notebook | `experiment.ipynb` — 32 cells, replicate run.py workflow |
 | Documentation normalization | README doc structure, CLAUDE.md rules, todo.md moved to docs/ |
 | Git hygiene | Removed redundant `Cao_SOTA_MP/.gitignore`, added `cache/` to parent |
-| Report index | Updated: 17 reports, including detailed rerun review and 1000-job validation |
+| Report index | Updated: 21 reports, including Beijing conflict preliminary and 300-job extension |
 | Visualization / tests / PuLP | Fig.2-style plots upgraded, deadline tests added, PuLP warning workaround complete |
 
 ## 12. Pending Work (Priority Order)
@@ -193,6 +197,9 @@ Open `docs/report/index.html` for a navigable index with evolution table.
 - **Conflict-graph artificial network** — Add a new `seed524` artificial graph family with low-mean/high-CV and high-mean/low-CV edge classes
 - **Conflict-graph mechanism audit** — Separate conflict ODs from non-conflict ODs and explain where MILP gains actually come from
 - **Beijing conflict-like variance plan** — Design a topology-aware “fast-risky vs slow-stable” variance layering for the Beijing graph
+- **Beijing conflict capped follow-up** — If more runs are needed, cap them at 300 jobs and prioritize informative coverage over full sweep
+- **Beijing baseline comparison** — Add direct original-vs-conflict Beijing comparison before trusting the new ranking
+- **Notebook output hygiene** — Refresh notebook outputs after dataset changes; stale outputs are not acceptable evidence
 
 ### Low
 - T-Drive real GPS trajectory data integration (optional, needs data acquisition)
@@ -230,6 +237,6 @@ Open `docs/report/index.html` for a navigable index with evolution table.
 | Plan | `docs/plan.md` | Phases, key decisions, report inventory |
 | Changelog | `docs/change.md` | Chronological, newest-first |
 | TODO | `docs/todo.md` | Tasks + completed history + quick commands |
-| Report index | `docs/report/index.html` | 17 reports with evolution table |
+| Report index | `docs/report/index.html` | 21 reports with evolution table |
 | CLAUDE.md | `../CLAUDE.md` | AI assistant instructions (RSP level) |
 | Handover 001 | `docs/handover/001-project-handover.md` | Previous handover (2026-05-23) |

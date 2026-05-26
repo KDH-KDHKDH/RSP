@@ -12,12 +12,15 @@ uv sync
 # Generate experiment data
 uv run python Cao_SOTA_MP/data/generate.py --preset small
 uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42
+uv run python Cao_SOTA_MP/data/generate.py --preset conflict --seed 524
 uv run python Cao_SOTA_MP/data/generate.py --preset beijing
+uv run python Cao_SOTA_MP/data/generate.py --preset beijing-conflict
 
 # Run experiment
 uv run python Cao_SOTA_MP/run.py                                                # small dataset (default)
 uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot # full dataset with figures
 uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing --plot
+uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing_conflict --plot
 
 # Run tests
 uv run pytest Cao_SOTA_MP/tests/ -v
@@ -52,13 +55,20 @@ All solvers take `(network, W, origin, destination, tau)` and return `{path_x, l
 | MILP | 88.9% | 68.9% | 7.7s |
 
 ILP = 100% accuracy reproduced. Tie-aware accuracy (|gap| ≤ 1/N) is the primary comparison metric; path-match accuracy is retained as a secondary structural diagnostic.
-For the latest results in this repo, start with report 09 (artificial network) and report 12 (Beijing high-CV).
+For the latest results in this repo, start with report 17 (seed42 large-scale artificial), report 19 (conflict artificial graph), and report 21 (Beijing conflict 300-job extension).
+
+For handoff, start with:
+- `docs/handover/004-delivery-handover.md`
+- `docs/plan.md`
+- `docs/todo.md`
+- `docs/spec.md`
+- `docs/report/index.html`
 
 ## Project Structure
 
 ```
 Cao_SOTA_MP/
-├── data/                # Generated datasets (small / full/seed42 / beijing)
+├── data/                # Generated datasets (small / full/seed42 / full/seed524 / beijing / beijing_conflict)
 │   └── generate.py      # Data generation entry point (--preset, --seed)
 ├── configs/             # YAML experiment configs
 ├── src/                 # Source code (flat package)
@@ -69,10 +79,10 @@ Cao_SOTA_MP/
 │   ├── dijkstra_solver.py  # Dijkstra baseline
 │   ├── experiment.py    # Experiment orchestration
 │   └── visualize.py     # Accuracy vs α + scatter plots
-├── tests/               # 10 unit tests
+├── tests/               # 14 unit tests
 ├── docs/                # Documentation (plans, specs, changelog, todo, reports)
 ├── results/             # Experiment outputs (CSV + figures)
-└── run.py               # Single experiment entry point
+└── run.py               # CLI experiment entry point
 ```
 
 ## Configuration
@@ -95,7 +105,14 @@ uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --dat
 
 ## Reports
 
-See `docs/report/index.html` for all 17 reports, including the latest detailed rerun review and large-scale validation report.
+See `docs/report/index.html` for all 21 reports, including the latest Beijing conflict extension.
+
+Only a subset is required for handoff:
+- `17_full_protocol_seed42_1000jobs.html`
+- `19_conflict_graph_seed524.html`
+- `21_beijing_conflict_300jobs.html`
+
+Everything else under `docs/report/` should be treated as historical context, not required first-pass reading.
 
 ## Documentation Structure
 

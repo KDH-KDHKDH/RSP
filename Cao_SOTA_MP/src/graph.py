@@ -38,6 +38,11 @@ class RoadNetwork:
             types = data["highway_types"].tolist()
             for j, (u, v) in enumerate(edges_arr):
                 G[u][v]["highway"] = types[int(codes[j])]
+        if "edge_type_codes" in data and "edge_type_names" in data:
+            codes = data["edge_type_codes"]
+            names = data["edge_type_names"].tolist()
+            for j, (u, v) in enumerate(edges_arr):
+                G[u][v]["edge_type"] = names[int(codes[j])]
 
         return cls.from_networkx(G)
 
@@ -63,6 +68,15 @@ class RoadNetwork:
                          for e in self.edges]
                 kwargs["edge_highway_codes"] = np.array(codes, dtype=np.int32)
                 kwargs["highway_types"] = np.array(highway_set)
+            if "edge_type" in first_attrs:
+                edge_type_set = sorted(set(
+                    self.graph.edges[e].get("edge_type", "unknown") for e in self.edges
+                ))
+                edge_type_map = {t: i for i, t in enumerate(edge_type_set)}
+                codes = [edge_type_map[self.graph.edges[e].get("edge_type", "unknown")]
+                         for e in self.edges]
+                kwargs["edge_type_codes"] = np.array(codes, dtype=np.int32)
+                kwargs["edge_type_names"] = np.array(edge_type_set)
 
         np.savez(path, **kwargs)
 

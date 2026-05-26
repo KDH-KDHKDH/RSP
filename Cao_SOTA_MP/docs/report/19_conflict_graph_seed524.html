@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>实验报告 19: 冲突图实验 (Conflict Graph seed524) — Cao SOTA MP</title>
+<style>
+:root { --bg: #fafafa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 980px; margin: 0 auto; }
+h1 { font-size: 1.85rem; margin-bottom: 0.5rem; color: var(--accent); }
+h2 { font-size: 1.35rem; margin: 2.2rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 1.08rem; margin: 1.4rem 0 0.5rem; color: var(--accent); }
+p, li { margin-bottom: 0.6rem; }
+ul, ol { padding-left: 1.5rem; }
+.meta { color: var(--muted); font-size: 0.92rem; margin-bottom: 2rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+.good { background: #e8f5e9; border-left: 4px solid #43a047; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.info { background: #eff6ff; border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.highlight { background: #f3e8ff; border-left: 4px solid #7c3aed; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+.bad { background: #fce4ec; border-left: 4px solid #e53935; padding: 1rem 1.2rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.8rem; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; }
+tr:nth-child(even) { background: #f8fafc; }
+.code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>实验报告 19: 冲突图实验 — 双峰边类型对求解器行为的分离效应</h1>
+<div class="meta">2026-05-24 &middot; 数据集: full/seed524 (conflict) &middot; 求解器: SCIP &middot; 1000 jobs &middot; 首次冲突型人工图实验族</div>
+
+<div class="info">
+<strong>本次实验目的:</strong> 在新的人工图（seed 524，双峰边类型 fast_risky / slow_stable）上运行完整实验，观察双峰方差结构对 ILP / MILP / Dijkstra 三个求解器行为的影响，重点回答两个问题：(1) 冲突图是否改变了 MILP 与 Dijkstra 的相对排序？(2) MILP ℓ₁ 松弛在面对"快但险 vs 慢但稳"路径选择时表现如何？
+</div>
+
+<h2>1. 实验配置</h2>
+
+<div class="card">
+<table>
+<tr><th>参数</th><th>值</th></tr>
+<tr><td>路网</td><td>人工 65 节点, 123 边, seed=524</td></tr>
+<tr><td>边类型</td><td>fast_risky 61 (49.6%) / slow_stable 62 (50.4%)</td></tr>
+<tr><td>fast_risky 参数</td><td>mean ~ U(10, 50), CV ~ U(0.8, 1.4) → 实测 CV [0.76, 1.84], mean [10.2, 49.0]</td></tr>
+<tr><td>slow_stable 参数</td><td>mean ~ U(40, 90), CV ~ U(0.2, 0.6) → 实测 CV [0.20, 0.64], mean [38.5, 89.3]</td></tr>
+<tr><td>CV 类型分离</td><td><strong>干净无重叠</strong>: fast min 0.757 > slow max 0.644</td></tr>
+<tr><td>冲突型 OD 对</td><td>6/20 拥有 fast-heavy 与 slow-heavy 两种可选路径</td></tr>
+<tr><td>样本数 N</td><td>500</td></tr>
+<tr><td>OD 对数</td><td>20</td></tr>
+<tr><td>重复次数</td><td>10</td></tr>
+<tr><td>α 水平</td><td>[0.5, 0.6, 0.7, 0.8, 0.9]</td></tr>
+<tr><td>总任务量</td><td>10 × 20 × 5 = 1000 jobs</td></tr>
+<tr><td>求解器</td><td>SCIP (pyscipopt 6.2.1)</td></tr>
+<tr><td>Big-M</td><td>逐样本紧界 Mᵢ, cap 1e6</td></tr>
+<tr><td>Deadline 模式</td><td>heuristic (4 源候选路径池, max 1000)</td></tr>
+</table>
+</div>
+
+<h2>2. 核心结果: Tie-Aware 准确率（主指标）</h2>
+
+<div class="good">
+<strong>所有 1000 个 ILP job 均返回 Optimal 状态，reference availability = 100%。</strong> 双峰冲突图未导致任何求解器失败。
+</div>
+
+<h3>2.1 总体准确率</h3>
+
+<table>
+<tr><th>方法</th><th>Tie-Aware Accuracy (主, |gap| ≤ 1/N)</th><th>Path-Match Accuracy (辅)</th><th>平均求解时间</th></tr>
+<tr><td><strong>ILP</strong></td><td><strong>100.0%</strong></td><td><strong>100.0%</strong></td><td>0.24s</td></tr>
+<tr><td>MILP</td><td><strong>91.2%</strong></td><td>75.3%</td><td>0.16s</td></tr>
+<tr><td>Dijkstra</td><td>87.3%</td><td><strong>78.2%</strong></td><td>0.0004s</td></tr>
+</table>
+
+<div class="highlight">
+<strong>关键发现 #1 — 排序维持但差距缩小:</strong> 在 tie-aware 主指标下，MILP (91.2%) 仍然领先 Dijkstra (87.3%)，但路径匹配指标上两者的差距从 11.5pp 缩小到 2.9pp。冲突图结构使 MILP 的路径匹配准确率大幅提升（见第 3 节）。
+</div>
+
+<h3>2.2 按 α 分层</h3>
+
+<table>
+<tr><th>α</th><th>MILP Tie-Aware</th><th>Dijkstra Tie-Aware</th><th>ILP Punctuality (mean)</th><th>ILP Punctuality (min)</th></tr>
+<tr><td>0.5</td><td><strong>93.0%</strong></td><td>92.5%</td><td>0.9349</td><td><strong>0.632</strong></td></tr>
+<tr><td>0.6</td><td><strong>92.0%</strong></td><td>88.5%</td><td>0.9688</td><td>0.816</td></tr>
+<tr><td>0.7</td><td><strong>91.5%</strong></td><td>85.5%</td><td>0.9853</td><td>0.928</td></tr>
+<tr><td>0.8</td><td><strong>89.5%</strong></td><td>85.5%</td><td>0.9927</td><td>0.958</td></tr>
+<tr><td>0.9</td><td><strong>90.0%</strong></td><td>84.5%</td><td>0.9962</td><td>0.986</td></tr>
+</table>
+
+<div class="warn">
+<strong>关键发现 #2 — α=0.5 出现极端低准时率 (63.2%):</strong> 在冲突图中，α=0.5 时 ILP 最低准时率仅 63.2%，远低于 seed42 基线的最低 76.8%。说明在最紧 deadline 下，冲突图确实创造了"无论选哪条路径都可能很晚"的困难实例。但随着 α 增大，准时率迅速恢复到 >92%。
+</div>
+
+<h2>3. 路径匹配准确率: MILP 的大幅跃升</h2>
+
+<div class="highlight">
+<strong>关键发现 #3 — MILP 路径匹配准确率从 63.7% 跃升至 75.3% (+11.6pp)。</strong> 这是本次实验最显著的发现。
+</div>
+
+<h3>3.1 按 α 分层 — 路径匹配</h3>
+
+<table>
+<tr><th>α</th><th>MILP Path-Match</th><th>Dijkstra Path-Match</th><th>MILP vs Dijkstra</th></tr>
+<tr><td>0.5</td><td>81.5%</td><td><strong>87.5%</strong></td><td>Dijkstra +6.0pp</td></tr>
+<tr><td>0.6</td><td>74.0%</td><td><strong>79.0%</strong></td><td>Dijkstra +5.0pp</td></tr>
+<tr><td>0.7</td><td>76.0%</td><td><strong>78.0%</strong></td><td>Dijkstra +2.0pp</td></tr>
+<tr><td>0.8</td><td>76.0%</td><td><strong>78.0%</strong></td><td>Dijkstra +2.0pp</td></tr>
+<tr><td>0.9</td><td><strong>69.0%</strong></td><td>68.5%</td><td>MILP +0.5pp</td></tr>
+</table>
+
+<div class="info">
+<strong>解释:</strong> 双峰边类型图引入了清晰的风险-收益权衡。MILP 的 ℓ₁ 松弛在优化准时概率目标时，能够更好地捕捉这种"需要在高方差和低方差边之间权衡"的结构。Dijkstra 只看均值，完全无视方差，导致在冲突图中其路径匹配优势从 +11.5pp (seed42) 缩小到仅 +2.9pp。
+</div>
+
+<h3>3.2 路径匹配准确率对比: seed42 vs seed524</h3>
+
+<table>
+<tr><th>方法</th><th>seed42 (均匀图)</th><th>seed524 (冲突图)</th><th>变化</th></tr>
+<tr><td>MILP</td><td>63.7%</td><td><strong>75.3%</strong></td><td><strong style="color:#43a047;">+11.6pp</strong></td></tr>
+<tr><td>Dijkstra</td><td>75.2%</td><td>78.2%</td><td style="color:#43a047;">+3.0pp</td></tr>
+<tr><td>MILP - Dijkstra gap</td><td>-11.5pp</td><td>-2.9pp</td><td><strong style="color:#2563eb;">+8.6pp 缩小</strong></td></tr>
+</table>
+
+<h2>4. Objective Gap 分析</h2>
+
+<h3>4.1 总体分布</h3>
+
+<table>
+<tr><th>指标</th><th>MILP</th><th>Dijkstra</th></tr>
+<tr><td>零 gap (p_method == p_ILP)</td><td>912/1000 (91.2%)</td><td>873/1000 (87.3%)</td></tr>
+<tr><td>Gap mean (非零)</td><td>0.00941</td><td>0.00792</td></tr>
+<tr><td>Gap max</td><td><strong>0.04200</strong></td><td>0.03400</td></tr>
+<tr><td>Gap mean (全部)</td><td>0.00083</td><td>0.00101</td></tr>
+</table>
+
+<div class="warn">
+<strong>关键发现 #4 — 零 gap 率重新排序:</strong> 在冲突图中，MILP 的零 gap 率 (91.2%) 高于 Dijkstra (87.3%)，与 seed42 相反（当时 Dijkstra 零 gap 率更高）。说明冲突图结构下，MILP 的 ℓ₁ 松弛更频繁地恢复了真正的最优解。
+</div>
+
+<h3>4.2 对比: seed42 vs seed524</h3>
+
+<table>
+<tr><th>指标</th><th>seed42</th><th>seed524</th><th>变化</th></tr>
+<tr><td>MILP objective gap mean</td><td>0.00060</td><td>0.00083</td><td style="color:#e53935;">+0.00023</td></tr>
+<tr><td>MILP objective gap max</td><td>0.03400</td><td>0.04200</td><td style="color:#e53935;">+0.008</td></tr>
+<tr><td>Dijkstra objective gap mean</td><td>0.00070</td><td>0.00101</td><td style="color:#e53935;">+0.00031</td></tr>
+<tr><td>Dijkstra objective gap max</td><td>0.04000</td><td>0.03400</td><td style="color:#43a047;">-0.006</td></tr>
+</table>
+
+<div class="info">
+<strong>解释:</strong> 冲突图的 gap 整体略大，因为路径选择空间更复杂（存在真实的 trade-off）。但 Dijkstra 最大 gap 反倒减小了，因为冲突图中均值最短路径碰巧经常与准时概率最优路径重叠（边均值范围较窄所致）。
+</div>
+
+<h2>5. 两两比较: 谁会胜出？</h2>
+
+<table>
+<tr><th>比较</th><th>seed42</th><th>seed524</th></tr>
+<tr><td>MILP == ILP (完全匹配)</td><td>--</td><td>912/1000 (91.2%)</td></tr>
+<tr><td>Dijkstra == ILP (完全匹配)</td><td>--</td><td>873/1000 (87.3%)</td></tr>
+<tr><td>MILP ≥ Dijkstra (同或更优)</td><td>--</td><td><strong>939/1000 (93.9%)</strong></td></tr>
+<tr><td>Dijkstra > MILP (Dijkstra 更优)</td><td>--</td><td>61/1000 (6.1%)</td></tr>
+</table>
+
+<div class="good">
+<strong>关键发现 #5 — MILP 在多数 job 上不劣于 Dijkstra:</strong> MILP 在 93.9% 的 job 上准时概率不低于 Dijkstra，6.1% 的 case 中被 Dijkstra 超越。冲突图结构整体有利于 MILP 的 ℓ₁ 松弛，但优势并非绝对。
+</div>
+
+<h2>6. Repeat 稳定性</h2>
+
+<table>
+<tr><th>Repeat</th><th>MILP Tie-Aware</th><th>Dijkstra Tie-Aware</th><th>领先者</th></tr>
+<tr><td>0</td><td>83.0%</td><td><strong>86.0%</strong></td><td>Dijkstra +3pp</td></tr>
+<tr><td>1</td><td><strong>92.0%</strong></td><td>90.0%</td><td>MILP +2pp</td></tr>
+<tr><td>2</td><td><strong>92.0%</strong></td><td>86.0%</td><td>MILP +6pp</td></tr>
+<tr><td>3</td><td><strong>94.0%</strong></td><td>86.0%</td><td>MILP +8pp</td></tr>
+<tr><td>4</td><td><strong>91.0%</strong></td><td>82.0%</td><td>MILP +9pp</td></tr>
+<tr><td>5</td><td>91.0%</td><td><strong>92.0%</strong></td><td>Dijkstra +1pp</td></tr>
+<tr><td>6</td><td><strong>92.0%</strong></td><td>87.0%</td><td>MILP +5pp</td></tr>
+<tr><td>7</td><td><strong>95.0%</strong></td><td>93.0%</td><td>MILP +2pp</td></tr>
+<tr><td>8</td><td><strong>93.0%</strong></td><td>86.0%</td><td>MILP +7pp</td></tr>
+<tr><td>9</td><td><strong>89.0%</strong></td><td>85.0%</td><td>MILP +4pp</td></tr>
+</table>
+
+<div class="info">
+<strong>MILP 在 8/10 个 repeat 中领先 Dijkstra</strong>（seed42 中为 7/10）。各 repeat 间 MILP 波动 [83%, 95%]，Dijkstra 波动 [82%, 93%]。MILP 的最低 repeat (83%) 仍低于部分 Dijkstra repeat (86-93%)，说明存在 repeat 特异性的难例。
+</div>
+
+<h2>7. 求解性能</h2>
+
+<table>
+<tr><th>方法</th><th>Mean (s)</th><th>Median (s)</th><th>Max (s)</th><th>seed42 Mean</th></tr>
+<tr><td>ILP</td><td>0.2367</td><td>0.1303</td><td>3.5494</td><td>0.3718</td></tr>
+<tr><td>MILP</td><td>0.1556</td><td>0.1092</td><td>0.8272</td><td>0.1907</td></tr>
+<tr><td>Dijkstra</td><td>0.0004</td><td>0.0004</td><td>0.0008</td><td>0.0004</td></tr>
+</table>
+
+<div class="info">
+<strong>ILP 求解时间在冲突图中下降 36%</strong>（0.37s → 0.24s）。可能原因: 双峰边类型图的最优路径搜索空间更结构化，分支定界早剪枝更有效。MILP 也类似下降 18% (0.19s → 0.16s)。
+</div>
+
+<h2>8. 冲突结构审计回顾</h2>
+
+<div class="card">
+<p><strong>图结构:</strong> 65 节点, 123 边, 10 重复, 20 OD 对</p>
+<p><strong>边类型:</strong> 61 fast_risky (高 CV, 低均值), 62 slow_stable (低 CV, 高均值)</p>
+<p><strong>CV 分离:</strong> 完全干净 — fast min 0.757 > slow max 0.644</p>
+<p><strong>均值重叠:</strong> fast max 49.0 vs slow min 38.5 (边界重叠, 符合设计预期)</p>
+<p><strong>冲突型 OD 对:</strong> 6/20 (30%) 拥有 fast-heavy 与 slow-heavy 两条以上替代路径</p>
+</div>
+
+<h2>9. 综合结论</h2>
+
+<div class="good">
+<strong>1. 冲突图实验表明 MILP ℓ₁ 松弛在双峰风险结构下图上的路径匹配能力有所改善。</strong>
+<p>MILP 路径匹配准确率从 seed42 的 63.7% 上升至 75.3% (+11.6pp)，说明当图中存在快但险 / 慢但稳边类型分化时，MILP 的连续松弛比在均匀 CV 图上更频繁地恢复了 ILP 的最优路径选择。但这属于该特定图结构下的观察，不构成 MILP 普遍优于 Dijkstra 的证据。</p>
+</div>
+
+<div class="good">
+<strong>2. MILP 在 tie-aware 主指标上领先 Dijkstra (91.2% vs 87.3%, +3.9pp)，与 seed42 方向一致 (+1.9pp)。</strong>
+<p>两种图结构都观察到 MILP tie-aware ≥ Dijkstra。冲突图中差距从 1.9pp 扩大到 3.9pp，但绝对值仍然有限，MILP 的优越性只在统计意义上成立，不构成全面碾压。</p>
+</div>
+
+<div class="warn">
+<strong>3. 冲突图创造了更难的 deadline 实例。</strong>
+<p>α=0.5 时 ILP 准时率最低仅 63.2%，显著低于 seed42 的 76.8%。这说明"快但险"路径在紧 deadline 下面临真实的准时风险，验证了冲突图设计达成了预期效果。</p>
+</div>
+
+<div class="info">
+<strong>4. Object gap 结构在两种图上基本一致。</strong>
+<p>MILP 零 gap 率 91.2% vs Dijkstra 87.3%。MILP 非零 gap 均值 0.0094 vs Dijkstra 0.0079。两者差距很小（均值差 0.0015），说明即使路径选择不同，准时概率差异也不大。</p>
+</div>
+
+<div class="highlight">
+<strong>5. 后续方向:</strong> 当前冲突图有 30% 的 OD 对拥有冲突型路径选择。后续可在 Beijing OSM 网络上模拟类似的冲突结构（利用真实 road hierarchy 的内生方差差异），并补充冲突 OD / 非冲突 OD 的拆分统计和 MILP 提升来源分析。
+</div>
+
+<h2>10. 完整指标对比: seed42 vs seed524</h2>
+
+<table>
+<tr><th>指标</th><th>seed42 (均匀 CV)</th><th>seed524 (冲突图)</th><th>变化</th></tr>
+<tr><td>Tie-Aware MILP</td><td>90.2%</td><td><strong>91.2%</strong></td><td style="color:#43a047;">+1.0pp</td></tr>
+<tr><td>Tie-Aware Dijkstra</td><td><strong>88.3%</strong></td><td>87.3%</td><td style="color:#e53935;">-1.0pp</td></tr>
+<tr><td>Path-Match MILP</td><td>63.7%</td><td><strong>75.3%</strong></td><td style="color:#43a047;"><strong>+11.6pp</strong></td></tr>
+<tr><td>Path-Match Dijkstra</td><td>75.2%</td><td><strong>78.2%</strong></td><td style="color:#43a047;">+3.0pp</td></tr>
+<tr><td>MILP objective gap mean</td><td><strong>0.00060</strong></td><td>0.00083</td><td style="color:#e53935;">+0.00023</td></tr>
+<tr><td>Dijkstra objective gap mean</td><td><strong>0.00070</strong></td><td>0.00101</td><td style="color:#e53935;">+0.00031</td></tr>
+<tr><td>ILP punctuality min (α=0.5)</td><td><strong>0.768</strong></td><td>0.632</td><td style="color:#e53935;">-0.136</td></tr>
+<tr><td>ILP solve time mean</td><td>0.37s</td><td><strong>0.24s</strong></td><td style="color:#43a047;">-35%</td></tr>
+<tr><td>ILP 100% Optimal</td><td>Yes</td><td>Yes</td><td>—</td></tr>
+</table>
+
+</body>
+</html>

@@ -22,14 +22,21 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.generator import (create_artificial_network, generate_travel_times,
-                           generate_beijing_travel_times, random_od_pairs)
+                           generate_beijing_travel_times, assign_conflict_edge_types,
+                           generate_conflict_travel_times,
+                           assign_beijing_conflict_edge_types,
+                           generate_beijing_conflict_travel_times,
+                           BEIJING_CONFLICT_TIERS, BEIJING_CONFLICT_CV,
+                           random_od_pairs)
 from src.osm_network import HIGHWAY_CV_RANGE, load_beijing_network
 
 
 PRESETS = {
     "small": {"nodes": 10, "edges": 20, "samples": 50, "repeats": 3, "od_pairs": 5},
     "full": {"nodes": 65, "edges": 123, "samples": 500, "repeats": 10, "od_pairs": 20},
+    "conflict": {"nodes": 65, "edges": 123, "samples": 500, "repeats": 10, "od_pairs": 20},
     "beijing": {"samples": 500, "repeats": 10, "od_pairs": 20},
+    "beijing-conflict": {"samples": 500, "repeats": 10, "od_pairs": 20},
 }
 
 
@@ -43,14 +50,12 @@ def generate_data(nodes: int, edges: int, samples: int, repeats: int,
     print(f"Output: {output_dir}")
 
     # Network
-    if preset == "beijing":
+    if preset == "beijing" or preset == "beijing-conflict":
         print("  Loading Beijing OSM road network...")
         network = load_beijing_network()
         print(f"  Loaded: {network.num_nodes} nodes, {network.num_edges} edges")
     else:
         network = create_artificial_network(nodes, edges, seed=seed)
-    network.save(output_dir / "network.npz")
-    print(f"  network.npz: {network.num_nodes} nodes, {network.num_edges} edges")
 
     # OD pairs
     od = random_od_pairs(network, od_pairs_count, seed=seed)
@@ -58,14 +63,26 @@ def generate_data(nodes: int, edges: int, samples: int, repeats: int,
     print(f"  od_pairs.npy: {len(od)} pairs")
 
     # Travel times (one matrix per repeat)
+    # For conflict preset, assign edge types once so they're consistent across repeats
+    if preset == "conflict":
+        assign_conflict_edge_types(network, seed=seed)
+    elif preset == "beijing-conflict":
+        assign_beijing_conflict_edge_types(network, seed=seed)
     tt_data = {}
     for r in range(repeats):
         if preset == "beijing":
             W = generate_beijing_travel_times(network, samples, seed=1000 + r)
+        elif preset == "beijing-conflict":
+            W = generate_beijing_conflict_travel_times(network, samples, seed=1000 + r)
+        elif preset == "conflict":
+            W = generate_conflict_travel_times(network, samples, seed=1000 + r)
         else:
             W = generate_travel_times(network.num_edges, samples, (10.0, 100.0), seed=1000 + r)
         tt_data[f"repeat_{r:02d}"] = W
     np.savez(output_dir / "travel_times.npz", **tt_data)
+
+    network.save(output_dir / "network.npz")
+    print(f"  network.npz: {network.num_nodes} nodes, {network.num_edges} edges")
     print(f"  travel_times.npz: {repeats} repeats x ({samples}, {network.num_edges})")
 
     # Meta
@@ -85,6 +102,24 @@ def generate_data(nodes: int, edges: int, samples: int, repeats: int,
             highway: [cv_lo, cv_hi]
             for highway, (cv_lo, cv_hi) in sorted(HIGHWAY_CV_RANGE.items())
         }
+    elif preset == "beijing-conflict":
+        meta["network_source"] = "OpenStreetMap (offline GraphML extracted from PBF)"
+        meta["location"] = "Beijing, China"
+        meta["travel_time_model"] = "lognormal, multi-level conflict (4 tiers x 2 variants = 8 edge types)"
+        meta["edge_type_tiers"] = {
+            tier: {"highways": sorted(info["highways"]), "volatile_pct": info["volatile_pct"]}
+            for tier, info in BEIJING_CONFLICT_TIERS.items()
+        }
+        meta["edge_type_cv"] = {
+            etype: [cv_lo, cv_hi]
+            for etype, (cv_lo, cv_hi) in sorted(BEIJING_CONFLICT_CV.items())
+        }
+    elif preset == "conflict":
+        meta["travel_time_model"] = "lognormal, dual edge types to induce path conflicts"
+        meta["edge_types"] = {
+            "fast_risky": {"mean_range": [10, 50], "cv_range": [0.8, 1.4]},
+            "slow_stable": {"mean_range": [40, 90], "cv_range": [0.2, 0.6]},
+        }
     else:
         meta["travel_time_range"] = [10.0, 100.0]
         meta["travel_time_std_ratio"] = [0.5, 1.2]
@@ -96,7 +131,7 @@ def generate_data(nodes: int, edges: int, samples: int, repeats: int,
 
 def main():
     parser = argparse.ArgumentParser(description="Generate experiment data")
-    parser.add_argument("--preset", choices=["small", "full", "beijing"], help="Use preset parameters")
+    parser.add_argument("--preset", choices=["small", "full", "conflict", "beijing", "beijing-conflict"], help="Use preset parameters")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for graph generation")
     parser.add_argument("--nodes", type=int, help="Number of nodes")
     parser.add_argument("--edges", type=int, help="Number of edges")
@@ -125,13 +160,17 @@ def main():
         output_dir = Path(__file__).parent / "small"
     elif args.preset == "full":
         output_dir = Path(__file__).parent / f"full/seed{seed}"
+    elif args.preset == "conflict":
+        output_dir = Path(__file__).parent / f"full/seed{seed}"
     elif args.preset == "beijing":
         output_dir = Path(__file__).parent / "beijing"
+    elif args.preset == "beijing-conflict":
+        output_dir = Path(__file__).parent / "beijing_conflict"
     else:
         output_dir = Path(__file__).parent / f"full/seed{seed}"
 
     # For beijing, nodes/edges come from OSM
-    if args.preset == "beijing":
+    if args.preset == "beijing" or args.preset == "beijing-conflict":
         nodes, edges = 0, 0  # placeholder, OSM determines actual size
     else:
         nodes = params["nodes"]

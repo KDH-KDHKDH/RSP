@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-Phase 1-9 全部完成。ILP=100% 精确解已复现。10/10测试通过。两个路网验证完成（人工65节点 + 北京587节点）。
+Phase 1-9 全部完成。ILP=100% 精确解已复现。14/14测试通过。三个路网验证完成（人工65节点 + 北京587节点 + 北京多级冲突方差）。
 
-**待推进:** 新人工图实验族、冲突图机制证据补强、北京冲突化方差方案与真实轨迹扩展。主评估口径与 gap 阈值策略已定：tie-aware 为主，阈值固定 `1/N`。
+**当前焦点:** 北京多级冲突方差扩展实验完成 (报告 21, 300 jobs)。后续方向：先补基线对照和机制证据，再决定是否继续扩展低 α 行为实验。交付时以 `004-delivery-handover.md` 作为主交接文档。
 
 ## 工作流程
 
@@ -26,11 +26,14 @@ Phase 1-9 全部完成。ILP=100% 精确解已复现。10/10测试通过。两�
 uv run python Cao_SOTA_MP/data/generate.py --preset small
 uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42
 uv run python Cao_SOTA_MP/data/generate.py --preset beijing
+uv run python Cao_SOTA_MP/data/generate.py --preset conflict --seed 524
+uv run python Cao_SOTA_MP/data/generate.py --preset beijing-conflict
 
 # Step 2: 跑实验
 uv run python Cao_SOTA_MP/run.py                                          # small (默认)
 uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
 uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing --plot
+uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --data-dir Cao_SOTA_MP/data/beijing_conflict --plot
 ```
 
 ## 阶段划分
@@ -95,14 +98,21 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 - [x] 评估口径切换：以 tie-aware accuracy 作为主准确率，path-match 降为辅助诊断
 - [x] 图表切换：accuracy 曲线和总表默认展示 tie-aware accuracy，path-match 作为附图/附表
 - [x] tie-aware 阈值策略定稿：固定使用 `|gap| ≤ 1/N`，不再继续复杂化
-- [ ] 清理 `tie_aware_accuracy_strict` 相关代码与输出产物
-- [ ] 新人工图实验族：使用 `seed=524`，不替代当前 `seed42`
-- [ ] 新人工图参数落地：`fast_risky` / `slow_stable` 双峰边类型
-- [ ] 新人工图冲突审计：验证是否形成“快但险 vs 慢但稳”的路径竞争
+- [x] 清理 `tie_aware_accuracy_strict` 相关代码与输出产物
+- [x] 新人工图实验族：使用 `seed=524`，不替代当前 `seed42` (报告 19)
+- [x] 新人工图参数落地：`fast_risky` / `slow_stable` 双峰边类型
+- [x] 新人工图冲突审计：验证是否形成”快但险 vs 慢但稳”的路径竞争 (11/20 OD 冲突)
 - [ ] 新人工图机制证据：补“冲突 OD vs 非冲突 OD”“路径边类型占比”“性能提升来源”三类分析
-- [ ] 报告口径收敛：把 conflict graph 报告中的强表述收敛到与证据匹配的级别
-- [ ] 北京冲突化方差方案：在真实拓扑上设计类似 `fast_risky / slow_stable` 的属性分层
-- [ ] 北京冲突化审计标准：先定义如何证明新方差方案真的制造了路径级冲突，再安排实验
+- [ ] 报告口径收敛：把 conflict graph 报告中的强表述收敛到与证据匹配的级别 (报告 19 已修正)
+- [x] 北京冲突化方差方案：在北京真实拓扑上设计 4 层 × 2 变体多级冲突方差
+- [x] 北京冲突化审计标准：预实验审计通过 (CV 分离干净, 4/10 OD 冲突)
+- [x] 北京冲突化初步实验：100 jobs, 报告 20, MILP-Dij 差距 +13pp
+- [x] 北京冲突扩展实验（上限 300 jobs）：3 repeats × 20 OD × 5 α, MILP-Dijkstra 差距 +16.6pp (报告 21)
+- [ ] 北京原始 vs 冲突直接对照：补同口径基线表，区分“共同退化”与“相对重排”
+- [ ] 北京冲突机制证据：补 conflict OD / non-conflict OD、边类型占比、MILP 增益来源
+- [ ] 北京冲突报告口径收敛：将 report 20/21 中强结论降级为与当前证据匹配的表述
+- [ ] Beijing notebook 输出修复：`experiment.ipynb` 后半段输出需与当前 `beijing_conflict` 结果一致，并修复 `print_summary` 报错
+- [ ] 北京冲突低 α 行为：探索 α=0.3, 0.4 下 ℓ₁ 松弛的表现
 - [ ] 真实轨迹数据接入（如 T-Drive）
 
 ## 报告命名规则
@@ -128,6 +138,11 @@ HiGHS 发现内存损坏bug后迁移到 SCIP (pyscipopt 6.2.1)。数据生成与
 | 14 | `14_deadline_protocol_audit.html` | small 数据集协议审计：heuristic 与 exact deadline 对照 |
 | 15 | `15_full_seed42_notebook_rerun.html` | full/seed42 在 notebook + SCIP 下的正式实验报告 |
 | 16 | `16_full_seed42_detailed_review.html` | full/seed42 详细指标分析、计划与项目状态审计 |
+| 17 | `17_full_protocol_seed42_1000jobs.html` | 人工路网 1000-job 大规模验证 |
+| 18 | `18_metric_policy_rollout.html` | Metric Policy 实施：主准确率切换、阈值敏感性 |
+| 19 | `19_conflict_graph_seed524.html` | 冲突图实验 (seed524): MILP 路径匹配 +11.6pp |
+| 20 | `20_beijing_conflict_prelim.html` | 北京多级冲突方差初步实验 (100 jobs): MILP-Dij +13pp |
+| 21 | `21_beijing_conflict_300jobs.html` | 北京多级冲突方差 300-job 扩展确认报告 |
 
 ## 关键决策
 
