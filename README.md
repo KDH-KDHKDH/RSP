@@ -31,8 +31,7 @@ RSP/
 │   └── tests/                        #   32 个测试
 │
 ├── configs/                          # SDK 配置模板
-├── notebook/mp.ipynb                 # SDK 使用示例
-└── docs/                             # 文档与实验报告
+└── notebook/mp.ipynb                 # SDK 使用示例
 ```
 
 ## 快速开始
