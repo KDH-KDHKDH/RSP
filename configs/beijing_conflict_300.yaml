@@ -1,0 +1,26 @@
+# Beijing conflict SDK/API configuration matching report 21 scale.
+data:
+  dir: Cao_SOTA_MP/data/beijing_conflict
+  num_samples: 500
+
+experiment:
+  num_repeats: 3
+  num_od_pairs: 20
+  alphas: [0.5, 0.6, 0.7, 0.8, 0.9]
+
+solver:
+  backend: SCIP
+  big_m: 1000000
+  time_limit: 120
+
+output:
+  dir: Cao_SOTA_MP/results/beijing_conflict_scip
+  save_figures: true
+  save_csv: true
+
+candidate_paths:
+  max_paths: 1000
+
+deadline:
+  mode: heuristic
+  enumeration_cutoff: 15
