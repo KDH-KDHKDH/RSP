@@ -15,3 +15,12 @@ wheels/
 
 # Cache
 cache/
+
+# Docs (keep on disk, not in repo)
+Cao_SOTA_MP/docs/
+
+# Claude config
+.claude/
+
+# Notebook outputs
+notebook/output/
