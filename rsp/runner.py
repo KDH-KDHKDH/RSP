@@ -10,17 +10,18 @@ import numpy as np
 import pandas as pd
 
 from .config import RSPConfig
-from .dataset import RSPDataset
+from .dataset import RSPDataset, RSPTimeDependentDataset
 from .metrics import compute_path_stats, path_match, tie_aware_correct
 from .result import RSPCaseResult, RSPResult
 from .adapters.cao import compute_deadline, solve_dijkstra, solve_ilp, solve_milp
+from .adapters.yang import solve_yang_otap_ilp
 
 
 @dataclass
 class RSPRunner:
     """In-memory SDK runner for single-case and batch RSP experiments."""
 
-    dataset: RSPDataset
+    dataset: RSPDataset | RSPTimeDependentDataset
     config: RSPConfig
 
     def run(self, progress: bool = True) -> RSPResult:
@@ -66,7 +67,8 @@ class RSPRunner:
         destination: int | None = None,
     ) -> RSPCaseResult:
         """Solve one repeat/OD/alpha case through the public SDK boundary."""
-        W = self._get_repeat_matrix(repeat)
+        W = self._get_deadline_matrix(repeat)
+        td = self._get_time_dependent_tensor(repeat)
         origin, destination, resolved_od_idx = self._resolve_od(
             od_idx=od_idx,
             origin=origin,
@@ -121,6 +123,25 @@ class RSPRunner:
                 destination,
                 tau,
             )
+        if "Yang_OTAP_ILP" in self.config.methods:
+            if td is None:
+                raise ValueError(
+                    "Yang_OTAP_ILP requires RSPTimeDependentDataset. "
+                    "Use RSPTimeDependentDataset.from_arrays(), from_cao_dataset(), "
+                    "or from_networkx()."
+                )
+            raw_results["Yang_OTAP_ILP"] = solve_yang_otap_ilp(
+                network=self.dataset.network,
+                travel_times=td,
+                origin=origin,
+                destination=destination,
+                tau=tau,
+                time_step=self.dataset.time_step,
+                sample_probabilities=self.dataset.sample_probabilities,
+                big_m=self.config.big_m,
+                solver_name=self.config.solver_backend,
+                time_limit=self.config.time_limit,
+            )
 
         metrics = self._build_case_metrics(
             raw_results=raw_results,
@@ -143,6 +164,22 @@ class RSPRunner:
         )
 
     def _get_repeat_matrix(self, repeat: int) -> np.ndarray:
+        if repeat < 0 or repeat >= self.dataset.num_repeats:
+            raise IndexError(
+                f"repeat index {repeat} out of range for {self.dataset.num_repeats} repeats"
+            )
+        return self.dataset.travel_times[repeat]
+
+    def _get_deadline_matrix(self, repeat: int) -> np.ndarray:
+        """Return Cao-style samples used for deadline computation and static methods."""
+        if isinstance(self.dataset, RSPTimeDependentDataset):
+            return self.dataset.deadline_matrix(repeat)
+        return self._get_repeat_matrix(repeat)
+
+    def _get_time_dependent_tensor(self, repeat: int) -> np.ndarray | None:
+        """Return the TD tensor for Yang methods, or None for static datasets."""
+        if not isinstance(self.dataset, RSPTimeDependentDataset):
+            return None
         if repeat < 0 or repeat >= self.dataset.num_repeats:
             raise IndexError(
                 f"repeat index {repeat} out of range for {self.dataset.num_repeats} repeats"
@@ -222,7 +259,7 @@ class RSPRunner:
         for method, result in raw_results.items():
             method_path = result.get("path_x") if result.get("status") == "Optimal" else None
             method_prob = result.get("punctuality_prob") if result.get("status") == "Optimal" else None
-            stats = compute_path_stats(W, method_path, tau)
+            stats = self._method_path_stats(method, result, W, method_path, tau)
             if reference_available and method_prob is not None:
                 objective_gap = float(reference_prob - method_prob)
                 tie_ok = tie_aware_correct(method_prob, reference_prob, W.shape[0])
@@ -237,6 +274,12 @@ class RSPRunner:
                 "status": result.get("status"),
                 "solve_time": result.get("solve_time"),
                 "lateness_count": result.get("lateness_count"),
+                "on_time_count": result.get("on_time_count"),
+                "path_edges": result.get("path_edges"),
+                "sample_travel_times": result.get("sample_travel_times"),
+                "arrival_time_indices": result.get("arrival_time_indices"),
+                "time_step": result.get("time_step"),
+                "conclusion": result.get("conclusion"),
                 "correct": correct,
                 "objective_gap": objective_gap,
                 "tie_aware_correct": tie_ok,
@@ -255,6 +298,27 @@ class RSPRunner:
             "reference_status": ilp_result.get("status") if ilp_result else None,
             "methods": methods,
         }
+
+    def _method_path_stats(
+        self,
+        method: str,
+        result: dict[str, Any],
+        W: np.ndarray,
+        method_path: np.ndarray | None,
+        tau: float,
+    ) -> dict[str, Any]:
+        if method == "Yang_OTAP_ILP" and result.get("sample_travel_times") is not None:
+            path_times = np.asarray(result["sample_travel_times"], dtype=np.float64)
+            delays = np.maximum(0, path_times - float(tau))
+            path_x = result.get("path_x")
+            return {
+                "late_count": result.get("lateness_count"),
+                "delay_sum": float(np.sum(delays)),
+                "max_delay": float(np.max(delays)),
+                "path_length": int(np.sum(path_x)) if path_x is not None else None,
+                "mean_time": float(np.mean(path_times)),
+            }
+        return compute_path_stats(W, method_path, tau)
 
     def _case_to_rows(self, case: RSPCaseResult) -> list[dict[str, Any]]:
         rows = []
@@ -279,10 +343,16 @@ class RSPRunner:
                     "tie_aware_correct": method_metrics["tie_aware_correct"],
                     "late_count": method_metrics["late_count"],
                     "lateness_count": method_metrics["lateness_count"],
+                    "on_time_count": method_metrics.get("on_time_count"),
                     "delay_sum": method_metrics["delay_sum"],
                     "max_delay": method_metrics["max_delay"],
                     "path_length": method_metrics["path_length"],
                     "mean_time": method_metrics["mean_time"],
+                    "path_edges": method_metrics.get("path_edges"),
+                    "sample_travel_times": method_metrics.get("sample_travel_times"),
+                    "arrival_time_indices": method_metrics.get("arrival_time_indices"),
+                    "time_step": method_metrics.get("time_step"),
+                    "conclusion": method_metrics.get("conclusion"),
                     "status": method_metrics["status"],
                     "reference_available": case_meta["reference_available"],
                     "reference_status": case_meta["reference_status"],

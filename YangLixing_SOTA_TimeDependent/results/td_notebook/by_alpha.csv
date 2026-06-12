@@ -1,0 +1,3 @@
+alpha,method,mean_punctuality_prob,mean_solve_time_s,optimal_rate,reference_available_rate,tie_aware_accuracy,path_match_accuracy,mean_objective_gap,mean_lateness_count,mean_on_time_count
+0.5,Yang_OTAP_ILP,0.635,2.775682128999506,1.0,0.0,,,,18.25,31.75
+0.7,Yang_OTAP_ILP,0.8150000000000002,2.6506422070001463,1.0,0.0,,,,9.25,40.75

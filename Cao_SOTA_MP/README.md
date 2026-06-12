@@ -1,7 +1,9 @@
-# RSP: Reliable Shortest Path
+# Cao_SOTA_MP - Static Stochastic Reliable Shortest Path
 
 Reproduction of **Cao et al. (2020)** — an ILP-based exact solver for finding the path
 with maximum probability of arriving on-time under stochastic edge travel times.
+
+This folder contains the Cao core implementation, generated datasets, configs, CLI, and regression tests. The shared public SDK is exposed from the repository root package `rsp/`.
 
 ## Quick Start
 
@@ -23,6 +25,30 @@ uv run python Cao_SOTA_MP/run.py --config Cao_SOTA_MP/configs/beijing.yaml --dat
 # Run tests
 uv run pytest Cao_SOTA_MP/tests/ -v
 ```
+
+## SDK Usage
+
+Use `RSPDataset` for Cao static travel-time samples:
+
+```python
+from rsp import RSPConfig, RSPDataset, RSPRunner
+
+dataset = RSPDataset.from_directory("Cao_SOTA_MP/data/full/seed524")
+config = RSPConfig(
+    methods=("ILP", "MILP", "Dijkstra"),
+    alphas=(0.5, 0.7, 0.9),
+    num_repeats=1,
+    num_od_pairs=5,
+    solver_backend="SCIP",
+)
+
+result = RSPRunner(dataset, config).run()
+print(result.summary())
+print(result.by_alpha())
+print(result.method_comparison(reference="ILP"))
+```
+
+`notebook/mp.ipynb` contains the interactive SDK example for network loading, single OD metrics, multi OD metrics, and result exports.
 
 ## Project Structure
 
@@ -95,6 +121,11 @@ ILP = 100% accuracy reproduced. Tie-aware accuracy (`|gap| ≤ 1/N`) is the prim
 - **Per-sample tight big-M** — Mᵢ = max(1, ΣⱼW[i,j]-τ), 200-8000× tighter than fixed 1e6
 - **Two accuracy metrics**: tie-aware (`|gap| ≤ 1/N`, primary) + path-vector match (auxiliary)
 - **SDK boundary** — public API lives under root-level `rsp/`; `Cao_SOTA_MP/src/` remains the core research implementation
+- **Time-dependent reuse path** — Yang first-version experiments reuse Cao datasets through `RSPTimeDependentDataset.from_cao_dataset(...)`
+
+## Local Docs
+
+`Cao_SOTA_MP/docs/` is intentionally ignored by git. Keep local plans, reports, and handover notes there without committing generated documentation.
 
 ## References
 

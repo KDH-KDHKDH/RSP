@@ -9,7 +9,7 @@ from typing import Any
 import yaml
 
 
-SUPPORTED_METHODS = {"ILP", "MILP", "Dijkstra"}
+SUPPORTED_METHODS = {"ILP", "MILP", "Dijkstra", "Yang_OTAP_ILP"}
 SUPPORTED_DEADLINE_MODES = {"heuristic", "exact"}
 
 

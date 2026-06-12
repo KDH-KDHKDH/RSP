@@ -67,6 +67,10 @@ class RSPResult:
                 row["path_match_accuracy"] = group["correct"].mean()
             if "objective_gap" in group:
                 row["mean_objective_gap"] = group["objective_gap"].mean()
+            if "lateness_count" in group:
+                row["mean_lateness_count"] = group["lateness_count"].mean()
+            if "on_time_count" in group:
+                row["mean_on_time_count"] = group["on_time_count"].mean()
             rows.append(row)
         return pd.DataFrame(rows)
 
@@ -245,6 +249,10 @@ class RSPResult:
                 row["path_match_accuracy"] = group["correct"].mean()
             if "objective_gap" in group:
                 row["mean_objective_gap"] = group["objective_gap"].mean()
+            if "lateness_count" in group:
+                row["mean_lateness_count"] = group["lateness_count"].mean()
+            if "on_time_count" in group:
+                row["mean_on_time_count"] = group["on_time_count"].mean()
             rows.append(row)
         return pd.DataFrame(rows)
 

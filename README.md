@@ -1,150 +1,151 @@
-# RSP — Reliable Shortest Path
+# RSP - Reliable Shortest Path
 
-复现 **Cao et al. (2020)** 的 ILP 精确解法：在有随机边行程时间的有向路网中，找到**准时到达概率最大**的路径。
+This repository provides a shared Python SDK for reliable shortest path experiments, with two reproduced method families:
 
-## 项目结构
+- `Cao_SOTA_MP`: Cao et al. stochastic reliable shortest path solvers on static travel-time samples.
+- `YangLixing_SOTA_TimeDependent`: Yang and Zhou time-dependent OTAP solver on sample-based time-expanded networks.
 
-```
+The public API lives in the root `rsp/` package. Research-specific folders keep the core solver implementations, tests, generated datasets, and local reports.
+
+## Project Layout
+
+```text
 RSP/
-├── rsp/                              # 对外 Python SDK
-│   ├── __init__.py                   #   导出 RSPDataset, RSPConfig, RSPRunner, RSPResult
-│   ├── dataset.py                    #   RSPDataset — 数据加载/校验
-│   ├── config.py                     #   RSPConfig — 实验配置
-│   ├── runner.py                     #   RSPRunner — 单 case / 批量运行
-│   ├── result.py                     #   RSPResult / RSPCaseResult — 结果读取
-│   ├── metrics.py                    #   公共指标 helper
-│   └── adapters/cao.py               #   调用核心算法的适配层
+├── rsp/                              # Public SDK facade
+│   ├── __init__.py                   # RSPDataset, RSPTimeDependentDataset, RSPConfig, RSPRunner, RSPResult
+│   ├── dataset.py                    # Static and time-dependent dataset containers
+│   ├── config.py                     # Typed experiment config
+│   ├── runner.py                     # Single-case and batch execution
+│   ├── result.py                     # Tabular result summaries
+│   ├── metrics.py                    # Shared metrics
+│   └── adapters/                     # Calls into Cao/Yang core solvers
 │
-├── Cao_SOTA_MP/                      # 核心算法与复现资产
-│   ├── src/                          #   求解器实现
-│   │   ├── graph.py                  #     RoadNetwork 数据结构
-│   │   ├── ilp_solver.py             #     ILP 精确求解器
-│   │   ├── milp_solver.py            #     MILP ℓ₁ 松弛求解器
-│   │   ├── dijkstra_solver.py        #     Dijkstra 基线求解器
-│   │   ├── generator.py              #     路网生成、deadline 计算
-│   │   ├── experiment.py             #     实验编排
-│   │   ├── visualize.py              #     可视化
-│   │   └── osm_network.py            #     OSM 路网加载
-│   ├── data/generate.py              #   数据生成入口
-│   ├── run.py                        #   CLI 入口
-│   ├── experiment.ipynb             #   Notebook 入口
-│   └── tests/                        #   32 个测试
+├── Cao_SOTA_MP/                      # Cao et al. static stochastic RSP reproduction
+│   ├── src/                          # ILP, MILP, Dijkstra and experiment utilities
+│   ├── data/                         # Data generator and generated datasets
+│   ├── configs/                      # YAML experiment configs
+│   ├── tests/                        # Cao and SDK regression tests
+│   └── run.py                        # CLI entry point
 │
-├── configs/                          # SDK 配置模板
-└── notebook/mp.ipynb                 # SDK 使用示例
+├── YangLixing_SOTA_TimeDependent/    # Yang and Zhou time-dependent OTAP reproduction
+│   ├── src/yang_otap_solver.py       # Exact OTAP time-expanded ILP
+│   ├── tests/                        # Core Yang solver tests
+│   ├── configs/                      # Reserved for Yang configs
+│   ├── data/                         # Reserved for Yang data artifacts
+│   └── results/                      # Local experiment outputs
+│
+└── notebook/
+    ├── mp.ipynb                      # Cao SDK example
+    └── td.ipynb                      # Yang SDK example and small experiment platform
 ```
 
-## 快速开始
+`Cao_SOTA_MP/docs/` and `YangLixing_SOTA_TimeDependent/docs/` are intentionally ignored by git. They are local maintenance/report folders and may contain large PDFs or generated HTML reports.
+
+## Setup
 
 ```bash
 uv sync
-uv run pytest Cao_SOTA_MP/tests/ -v
-
-# 生成数据
-uv run python Cao_SOTA_MP/data/generate.py --preset small
-uv run python Cao_SOTA_MP/data/generate.py --preset full --seed 42
-
-# 运行实验
-uv run python Cao_SOTA_MP/run.py --data-dir Cao_SOTA_MP/data/full/seed42 --plot
 ```
 
-## SDK 使用指南
+Run the focused validation suite:
+
+```bash
+uv run pytest Cao_SOTA_MP/tests/test_sdk.py -k 'time_dependent_dataset_from_cao_dataset or yang' -v
+uv run pytest YangLixing_SOTA_TimeDependent/tests/test_yang_otap_solver.py -v
+```
+
+Run all Cao tests:
+
+```bash
+uv run pytest Cao_SOTA_MP/tests/ -v
+```
+
+## Cao Static SDK Example
 
 ```python
-from rsp import RSPDataset, RSPConfig, RSPRunner
+from rsp import RSPConfig, RSPDataset, RSPRunner
 
-# 1. 加载数据
 dataset = RSPDataset.from_directory("Cao_SOTA_MP/data/small")
-
-# 2. 配置
 config = RSPConfig(
-    methods=("ILP",),
+    methods=("ILP", "MILP", "Dijkstra"),
     alphas=(0.5, 0.7, 0.9),
     num_repeats=1,
     num_od_pairs=3,
     solver_backend="SCIP",
 )
 
-# 3. 运行
-runner = RSPRunner(dataset, config)
-result = runner.run()
-
-# 4. 读取结果
-print(result.summary())          # 方法级汇总
-print(result.by_alpha())         # 按 alpha 分组
+result = RSPRunner(dataset, config).run()
+print(result.summary())
+print(result.by_alpha())
 ```
 
-### RSPDataset — 数据容器
+## Yang Time-Dependent SDK Example
 
-```python
-# 从预生成目录加载
-dataset = RSPDataset.from_directory("Cao_SOTA_MP/data/small")
+Yang first-version support implements OTAP only. It reuses a Cao static dataset by lifting `W[sample, edge]` into a time-dependent tensor:
 
-# 从内存构建
-import networkx as nx, numpy as np
-G = nx.DiGraph()
-G.add_edge(0, 1); G.add_edge(0, 2)
-G.add_edge(1, 3); G.add_edge(2, 3)
-W = np.random.lognormal(mean=3.0, sigma=0.8, size=(500, 4))
-dataset = RSPDataset.from_arrays(G, W, [(0, 3)])
-# 自动校验：边列数、OD 节点存在性、可达性
+```text
+TD[sample, time_step, edge] = W[sample, edge] * time_profile[time_step]
 ```
 
-### RSPConfig — 实验配置
+The SDK computes the Cao-style deadline from the mean-over-time matrix and then solves `Yang_OTAP_ILP` on the time-expanded samples.
 
 ```python
-config = RSPConfig(
-    methods=("ILP",),          # ILP | MILP | Dijkstra
-    alphas=(0.5, 0.7, 0.9),   # α ∈ [0, 1]
-    num_repeats=None,          # None = 用完所有 repeat
-    num_od_pairs=None,         # None = 用完所有 OD
-    solver_backend="SCIP",     # SCIP / CBC / GLPK
-    time_limit=60,
-    deadline_mode="heuristic", # heuristic / exact
+import numpy as np
+
+from rsp import RSPConfig, RSPDataset, RSPRunner, RSPTimeDependentDataset
+
+cao = RSPDataset.from_directory("Cao_SOTA_MP/data/full/seed524")
+td = RSPTimeDependentDataset.from_cao_dataset(
+    cao,
+    time_profile=np.array([1.0, 1.05, 0.95, 1.1]),
+    time_step=0.05,
+    auto_horizon=True,
 )
-# 也可从 YAML 加载
-config = RSPConfig.from_yaml("Cao_SOTA_MP/configs/beijing.yaml")
+
+config = RSPConfig(
+    methods=("Yang_OTAP_ILP",),
+    alphas=(0.5, 0.7),
+    num_repeats=1,
+    num_od_pairs=2,
+    solver_backend="SCIP",
+    time_limit=60,
+)
+
+result = RSPRunner(td, config).run()
+print(result.summary())
+print(result.by_od())
 ```
 
-### RSPRunner — 运行实验
+For a fuller interactive example, use `notebook/td.ipynb`. It shows network loading, single OD metrics, multi OD metrics, and CSV exports.
+
+## Methods
+
+| Method | Dataset | Description |
+|--------|---------|-------------|
+| `ILP` | `RSPDataset` | Cao exact static stochastic RSP solver with binary lateness indicators |
+| `MILP` | `RSPDataset` | Cao L1 relaxation baseline |
+| `Dijkstra` | `RSPDataset` | Mean-travel-time shortest path baseline |
+| `Yang_OTAP_ILP` | `RSPTimeDependentDataset` | Yang exact time-dependent OTAP solver on a time-expanded network |
+
+`Yang_OTAP_ILP` is expected to be much slower than Cao static `ILP` because it adds sample-specific time-space flow variables and linking constraints. The current notebook audit on 4 OD / 8 rows found a slowdown of roughly `14x-437x` versus Cao static ILP on the same OD/sample scale.
+
+## Result Accessors
+
+`RSPResult` exposes stable tabular summaries:
 
 ```python
-runner = RSPRunner(dataset, config)
-
-# 单 case 调试
-case = runner.solve_case(repeat=0, od_idx=0, alpha=0.7)
-print(case.ilp["punctuality_prob"], case.tau)
-
-# 解码最优路径
-edge_idx = [j for j, v in enumerate(case.ilp["path_x"]) if v > 0.5]
-path = [dataset.edge_order[j] for j in edge_idx]
-
-# 批量运行
-result = runner.run(progress=True)
-```
-
-### RSPResult — 读取结果
-
-```python
-result.to_dataframe()                    # 原始 DataFrame
-result.summary()                         # 方法级汇总（punctuality, accuracy, solve_time）
-result.accuracy("tie_aware")             # tie-aware 准确率
-result.accuracy("path_match")            # 路径匹配准确率
-result.solve_time()                      # 求解时间统计
-result.status_counts()                   # solver 状态分布
-result.by_alpha()                        # 按 alpha 分组
-result.by_od()                           # 按 OD 对分组
-result.method_comparison(reference="ILP")
+df = result.to_dataframe()
+result.summary()
+result.by_alpha()
+result.by_od()
+result.solve_time()
+result.status_counts()
 result.save_csv("results.csv")
-result.save_figures("figures/")
 ```
 
-## 求解器
+When static `ILP` is included as a reference, `method_comparison(reference="ILP")`, tie-aware accuracy, path-match accuracy, and objective gaps are available. For Yang-only runs, use punctuality probability, lateness counts, status, path length, and solve-time metrics.
 
-| 求解器 | 文件 | 角色 |
-|--------|------|------|
-| ILP | `src/ilp_solver.py` | 精确解（ground-truth） |
-| MILP | `src/milp_solver.py` | ℓ₁ 松弛近似 |
-| Dijkstra | `src/dijkstra_solver.py` | 均值最短路径基线 |
+## References
 
-统一返回：`{path_x, punctuality_prob, lateness_count, status, solve_time}`。
+- Cao, Z., Guo, H., Zhang, J., Niyato, D., & Fastenrath, U. (2020). Finding the Shortest Path with Maximum Punctuality Probability under Stochastic Travel Times. IEEE Transactions on Intelligent Transportation Systems.
+- Yang and Zhou (2017). Time-dependent reliable path finding with OTAP/PTT formulations.

@@ -18,6 +18,7 @@ cache/
 
 # Docs (keep on disk, not in repo)
 Cao_SOTA_MP/docs/
+YangLixing_SOTA_TimeDependent/docs/
 
 # Claude config
 .claude/
